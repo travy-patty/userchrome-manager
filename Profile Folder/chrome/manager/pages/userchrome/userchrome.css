@@ -1,0 +1,127 @@
+#themesBox {
+    margin: 10px;
+}
+
+richlistitem {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    padding-inline-start: 7px;
+    padding-inline-end: 7px;
+    min-height: 25px;
+    border-bottom: 1px dotted #C0C0C0;
+}
+
+richlistitem[isDisabled="true"] {
+    color: GrayText;
+}
+
+richlistitem[selected="true"] {
+    background-color: -moz-Dialog;
+    color: -moz-DialogText;
+}
+
+.selectedButtons,
+.selectedStatusMsgs {
+    display: none;
+}
+
+richlistitem[selected="true"] .selectedButtons,
+richlistitem[selected="true"] .selectedStatusMsgs {
+    display: flex;
+}
+
+richlistbox:where(:focus) > richlistitem[selected="true"] {
+    background-image: url("chrome://uchrm/content/pages/userchrome/images/itemEnabledFader.png");
+    background-color: Highlight;
+    color: HighlightText;
+}
+
+richlistbox:where(:focus) > richlistitem[selected="true"][isDisabled="true"] {
+    background-image: url("chrome://uchrm/content/pages/userchrome/images/itemDisabledFader.png");
+}
+
+richlistitem[selected="true"] .startMsgLink {
+    color: inherit;
+}
+
+.descriptionWrap {
+    margin-bottom: 2px;
+}
+
+.addonName {
+    font-weight: bold;
+}
+
+.addonIcon {
+    margin-inline-end: 2px;
+    width: 32px;
+    max-width: 32px;
+    height: 32px;
+    max-height: 32px;
+    list-style-image: url("chrome://uchrm/content/pages/userchrome/images/themeGeneric.png");
+}
+
+#themeSplitter {
+    border-width: 0;
+}
+
+.selectedButtons {
+    margin-top: 4px;
+    min-height: 2.1em;
+}
+
+.selectedButtons button {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.optionsButton, .useThemeButton {
+    margin-inline-end: 0;
+}
+
+.uninstallButton, .cancelUninstallButton {
+    margin-inline-start: 5px;
+}
+
+#themePreviewArea,
+#themesView {
+    background-color: Field;
+    color: FieldText;
+    border: 1px solid ThreeDShadow;
+    overflow: auto;
+}
+
+#themesView {
+    margin: 0;
+}
+
+.previewText {
+    font-size: larger;
+    font-weight: bold;
+    color: ThreeDShadow;
+    text-align: center;
+}
+
+.statusMsg {
+    display: none;
+}
+
+.uninstallShow {
+    display: none;
+}
+
+richlistitem[opType="needs-uninstall"] .uninstallHide {
+    display: none;
+}
+
+richlistitem[opType="needs-uninstall"] .uninstallShow {
+    display: flex;
+}
+
+richlistitem[opType="needs-enable"] .enableShow {
+    display: flex;
+}
+
+.statusMsgLabel {
+    font-weight: bold;
+}

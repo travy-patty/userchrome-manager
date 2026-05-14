@@ -1,0 +1,9 @@
+content userchrome      ./
+# Hack: Fake folder, will get overridden
+content userscripts     ./userscripts/
+content userchromejs    ./
+
+content uchrm           ../manager/
+content uchrmjs         ../manager/JS/
+
+locale  uchrm           en-US ../manager/locale/en-US/

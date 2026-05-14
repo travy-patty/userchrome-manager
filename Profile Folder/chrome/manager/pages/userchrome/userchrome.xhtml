@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+
+<?xml-stylesheet href="chrome://global/skin/global.css" type="text/css"?>
+<?xml-stylesheet href="chrome://uchrm/content/pages/userchrome/userchrome.css" type="text/css"?>
+
+<!DOCTYPE window SYSTEM "chrome://uchrm/locale/dtd/userchrome-options.dtd">
+
+<window xmlns:html="http://www.w3.org/1999/xhtml" 
+        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" 
+        id="userchromeOptions"
+        windowtype="Browser:UserChromeOptions"
+        width="&window.width;" height="&window.height;" role="dialog" resizable="true"
+		persist="width height screenX screenY sizemode"
+        title="&window.title;">
+
+    <commandset id="themesCommands">
+        <command id="cmd_options"/>
+        <command id="cmd_about"/>
+        <command id="cmd_homepage"/>
+        <command id="cmd_uninstall"/>
+        <command id="cmd_cancelUninstall"/>
+        <command id="cmd_checkUpdate"/>
+        <command id="cmd_includeUpdate"/>
+        <command id="cmd_installUpdate"/>
+        <command id="cmd_enable"/>
+        <command id="cmd_disable"/>
+        <command id="cmd_useTheme"/>
+    </commandset>
+
+    <commandset id="globalCommands">
+        <command id="cmd_installFile"/>
+        <command id="cmd_checkUpdatesAll"/>
+        <command id="cmd_installUpdatesAll"/>
+        <command id="cmd_restartApp"/>
+        <command id="cmd_continue" disabled="true"/>
+        <command id="cmd_close"/>
+    </commandset>
+
+    <stringbundle id="optionsBundle" src="chrome://uchrm/locale/properties/userchrome-options.properties"/>
+
+    <hbox id="themesBox" flex="1">
+        <richlistbox id="themesView" flex="1">
+
+        </richlistbox>
+        <splitter id="themeSplitter" collapse="after" persist="state" />
+        <vbox id="themePreviewArea" persist="width">
+            <deck id="previewImageDeck" flex="1">
+                <vbox id="noThemeSelected" pack="center" align="center">
+                    <label class="previewText">No Theme Selected</label>
+                </vbox>
+                <vbox id="noPreviewImage" pack="center" align="center">
+                    <label class="previewText">This Theme does not have a Preview Image</label>
+                </vbox>
+                <vbox id="previewImageContainer" align="center" pack="center">
+                    <image id="previewImage" />
+                </vbox>
+            </deck>
+        </vbox>
+    </hbox>
+
+    <script src="chrome://uchrm/content/pages/userchrome/userchrome.js" type="text/javascript"></script>
+</window>
