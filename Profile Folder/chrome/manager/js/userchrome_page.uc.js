@@ -9,6 +9,7 @@
 {
     const ABOUT_PAGES = {
         "userchrome": "chrome://uchrm/content/pages/userchrome/userchrome.xhtml",
+        "abouttheme": "chrome://uchrm/content/pages/userchrome/about.xhtml",
     };
     const { AboutPageManager } = ChromeUtils.importESModule("chrome://uchrmjs/content/modules/AboutPageManager.sys.mjs");
 

@@ -1,0 +1,32 @@
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://uchrm/content/pages/userchrome/about.css" type="text/css"?>
+
+<!DOCTYPE dialog SYSTEM "chrome://uchrm/locale/dtd/about.dtd">
+
+<dialog id="genericAbout"
+        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        buttons="accept"
+        width="400" height="200">
+
+    <script src="chrome://global/content/contentAreaUtils.js" type="text/javascript"></script>
+
+    <stringbundleset id="aboutSet">
+        <stringbundle id="extensionsStrings" src="chrome://uchrm/locale/properties/extensions.properties" />
+    </stringbundleset>
+
+    <vbox id="clientBox" flex="1">
+        <label id="extensionName" crop="right" />
+        <label id="extensionVersion" crop="right" />
+        <description id="extensionDescription" class="indent" />
+
+        <label id="extensionCreatorLabel" class="sectionTitle">&creator.label;</label>
+        <hbox id="creatorBox" class="indent">
+            <label id="extensionCreator" flex="1" crop="right" />
+            <label id="extensionHomepage" class="text-link" value="&homepage.label;" />
+        </hbox>
+    </vbox>
+
+    <separator id="groove" class="groove" />
+
+    <script src="chrome://uchrm/content/pages/userchrome/about.js" type="text/javascript"></script>
+</dialog>

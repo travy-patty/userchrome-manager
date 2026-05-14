@@ -14,32 +14,37 @@
         title="&window.title;">
 
     <commandset id="themesCommands">
-        <command id="cmd_options"/>
         <command id="cmd_about"/>
         <command id="cmd_homepage"/>
         <command id="cmd_uninstall"/>
         <command id="cmd_cancelUninstall"/>
-        <command id="cmd_checkUpdate"/>
-        <command id="cmd_includeUpdate"/>
-        <command id="cmd_installUpdate"/>
-        <command id="cmd_enable"/>
-        <command id="cmd_disable"/>
         <command id="cmd_useTheme"/>
     </commandset>
 
     <commandset id="globalCommands">
         <command id="cmd_installFile"/>
-        <command id="cmd_checkUpdatesAll"/>
-        <command id="cmd_installUpdatesAll"/>
         <command id="cmd_restartApp"/>
-        <command id="cmd_continue" disabled="true"/>
         <command id="cmd_close"/>
     </commandset>
+
+    <menupopup id="addonContextMenu">
+        <menuitem id="menuitem_useTheme" default="true" command="cmd_useTheme"
+            label="&cmd.useTheme.label;" accesskey="&cmd.useTheme.accesskey;"/>
+        <menuitem id="menuitem_homepage" command="cmd_homepage"
+              label="&cmd.homepage.label;" accesskey="&cmd.homepage.accesskey;"/>
+        <menuitem id="menuitem_about" command="cmd_about"
+                label="&cmd.about2.label;" accesskey="&cmd.about.accesskey;"/>
+        <menuseparator id="menuseparator_1"/>
+        <menuitem id="menuitem_uninstall" command="cmd_uninstall"
+                label="&cmd.uninstall.label;" accesskey="&cmd.uninstall2.accesskey;"/>
+        <menuitem id="menuitem_cancelUninstall" command="cmd_cancelUninstall"
+                label="&cmd.cancelUninstall.label;" accesskey="&cmd.cancelUninstall.accesskey;"/>
+    </menupopup>
 
     <stringbundle id="optionsBundle" src="chrome://uchrm/locale/properties/userchrome-options.properties"/>
 
     <hbox id="themesBox" flex="1">
-        <richlistbox id="themesView" flex="1">
+        <richlistbox id="themesView" context="addonContextMenu" flex="1">
 
         </richlistbox>
         <splitter id="themeSplitter" collapse="after" persist="state" />

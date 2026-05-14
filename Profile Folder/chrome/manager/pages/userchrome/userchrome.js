@@ -40,6 +40,10 @@ const OP_NEEDS_DISABLE                = "needs-disable";
             return document.getElementById("themeSplitter");
         }
 
+        get _contextMenu() {
+            return document.getElementById("addonContextMenu");
+        }
+
         setElementDisabledByID(aID, aDoDisable) {
             var element = document.getElementById(aID);
             if (element) {
@@ -65,6 +69,7 @@ const OP_NEEDS_DISABLE                = "needs-disable";
 
             this._themesListBox.addEventListener("select", this.onCommandUpdate.bind(this));
             this._themesListBox.addEventListener("select", this.handleThemesListBox.bind(this));
+            this._contextMenu.addEventListener("popupshowing", this.onPopupShowing.bind(this));
 
             this.updateGlobalCommands();
             this.onCommandUpdate();
@@ -90,6 +95,21 @@ const OP_NEEDS_DISABLE                = "needs-disable";
             }
         }
 
+        onPopupShowing(event) {
+            let menupopup = event.target;
+
+            if (this._themesListBox.selectedItem.getAttribute("opType") == OP_NEEDS_UNINSTALL) {
+                document.getElementById("menuitem_uninstall").setAttribute("hidden", "true");
+                document.getElementById("menuitem_cancelUninstall").removeAttribute("hidden");
+            }
+            else {
+                document.getElementById("menuitem_uninstall").removeAttribute("hidden");
+                document.getElementById("menuitem_cancelUninstall").setAttribute("hidden", "true");
+            }
+
+            document.getElementById("menuitem_about").setAttribute("label", this.stringbundle.getFormattedString("aboutAddon", [this._themesListBox.selectedItem.getAttribute("name")]));
+        }
+
         globalCommands = {
             cmd_close: (e) => {
                 window.close();
@@ -101,6 +121,18 @@ const OP_NEEDS_DISABLE                = "needs-disable";
         }
 
         themesCommands = {
+            cmd_about: (aSelectedItem) => {
+                if (!aSelectedItem)
+                    return;
+
+                windowRoot.ownerGlobal.openDialog(
+                    "about:abouttheme",
+                    "",
+                    "chrome,centerscreen,modal",
+                    aSelectedItem.getAttribute("internalName")
+                );
+            },
+
             cmd_useTheme: (aSelectedItem) => {
                 let currentTheme = aSelectedItem.getAttribute("internalName");
 
@@ -135,9 +167,8 @@ const OP_NEEDS_DISABLE                = "needs-disable";
 
                 if (uninstallStruct.accepted) {
                     ThemeInfo.getByInternalName(currentTheme).markForUninstall();
-                }
-
-                aSelectedItem.setAttribute("opType", OP_NEEDS_UNINSTALL);
+                    aSelectedItem.setAttribute("opType", OP_NEEDS_UNINSTALL);
+                };
             },
 
             cmd_cancelUninstall: (aSelectedItem) => {
@@ -167,6 +198,8 @@ const OP_NEEDS_DISABLE                = "needs-disable";
                     return selectedItem.getAttribute("internalName") != ThemeInfo.getActive().internalName &&
                            ThemeInfo.getByInternalName(selectedItem.getAttribute("internalName")).isPendingUninstall &&
                            selectedItem.getAttribute("internalName") !== "default";
+                case "cmd_about":
+                    return selectedItem.getAttribute("opType") !== OP_NEEDS_INSTALL;
             }
 
             return false;
