@@ -96,8 +96,6 @@ const OP_NEEDS_DISABLE                = "needs-disable";
         }
 
         onPopupShowing(event) {
-            let menupopup = event.target;
-
             if (this._themesListBox.selectedItem.getAttribute("opType") == OP_NEEDS_UNINSTALL) {
                 document.getElementById("menuitem_uninstall").setAttribute("hidden", "true");
                 document.getElementById("menuitem_cancelUninstall").removeAttribute("hidden");
@@ -131,6 +129,16 @@ const OP_NEEDS_DISABLE                = "needs-disable";
                     "chrome,centerscreen,modal",
                     aSelectedItem.getAttribute("internalName")
                 );
+            },
+
+            cmd_homepage: (aSelectedItem) => {
+                if (!aSelectedItem)
+                    return;
+
+                let homepageURL = aSelectedItem.getAttribute("homepageURL");
+                if (homepageURL) {
+                    windowRoot.ownerGlobal.openURL(homepageURL);
+                }
             },
 
             cmd_useTheme: (aSelectedItem) => {
@@ -200,6 +208,8 @@ const OP_NEEDS_DISABLE                = "needs-disable";
                            selectedItem.getAttribute("internalName") !== "default";
                 case "cmd_about":
                     return selectedItem.getAttribute("opType") !== OP_NEEDS_INSTALL;
+                case "cmd_homepage":
+                    return selectedItem.getAttribute("homepageURL") != "";
             }
 
             return false;
@@ -324,6 +334,7 @@ const OP_NEEDS_DISABLE                = "needs-disable";
             listitem.setAttribute("internalName", theme.internalName);
             listitem.setAttribute("name", theme.name);
             listitem.setAttribute("version", theme.version);
+            listitem.setAttribute("homepageURL", theme.homepageURL ? theme.homepageURL : "");
 
             listitem.appendChild(fragment);
             return listitem;

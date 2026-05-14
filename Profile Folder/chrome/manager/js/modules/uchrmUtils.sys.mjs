@@ -21,6 +21,15 @@ function parseRDFField(content, field) {
     return content.match(new RegExp(`<em:${field}>(.*?)<\/em:${field}>`))?.[1]?.trim() ?? null;
 }
 
+export function getThemeInstall(aValue) {
+    let theme = ThemeInfo.getActive();
+    if (!theme?.dir) return null;
+    let rdf = theme.dir.clone();
+    rdf.append("install.rdf");
+    if (!rdf.exists()) return null;
+    return parseRDFField(readFileText(rdf), aValue);
+}
+
 export class ThemeInfo {
     #dir;
 

@@ -20,10 +20,17 @@ var g_genericAbout;
 
             let extensionHomepage = document.getElementById("extensionHomepage");
             if (this._theme.homepageURL) {
-                extensionHomepage.href = this._theme.homepageURL;
+                extensionHomepage.setAttribute("href", this._theme.homepageURL);
             } else {
                 extensionHomepage.hidden = true;
             }
+
+            extensionHomepage.addEventListener("click", this.loadHomepage.bind(this));
+        }
+
+        loadHomepage(aEvent) {
+            window.close();
+            window.opener.openURL(aEvent.target.getAttribute("href"));
         }
     }
 
