@@ -328,31 +328,24 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
                         <label class="descriptionWrap"></label>
                         <vbox class="selectedStatusMsgs">
                             <hbox class="uninstallShow statusMsg">
-                                <label class="statusMsgLabel" value="This theme will be uninstalled when Firefox is restarted" crop="end" />
+                                <label class="statusMsgLabel" anonid="uninstallLabel" crop="end" />
 
-                                <label class="text-link startMsgLink restartBrowser"
-                                    value="Restart Firefox" />
+                                <label class="text-link startMsgLink restartBrowser" />
                             </hbox>
                             <hbox class="enableShow statusMsg">
-                                <label class="statusMsgLabel" value="This theme will be enabled when Firefox is restarted" crop="end" />
+                                <label class="statusMsgLabel" anonid="enableLabel" crop="end" />
 
-                                <label class="text-link startMsgLink restartBrowser"
-                                    value="Restart Firefox" />
+                                <label class="text-link startMsgLink restartBrowser" />
                             </hbox>
                             <hbox class="incompatibleBox attention">
-                                <label class="statusMsgLabel" id="incompatibleLabel" crop="end"/>
+                                <label class="statusMsgLabel" anonid="incompatibleLabel" crop="end"/>
                             </hbox>
                         </vbox>
                         <hbox flex="1" class="selectedButtons">
-                            <button class="uninstallHide themeButton useThemeButton"
-                                    label="Use Theme" accesskey="T" tooltiptext="Changes Firefox's Theme" command="cmd_useTheme"/>
+                            <button class="uninstallHide themeButton useThemeButton" command="cmd_useTheme"/>
                             <spacer flex="1" />
-                            <button class="uninstallHide uninstallButton"
-                                label="Uninstall" accesskey="U"
-                                tooltiptext="Uninstall this Add-on when Firefox is restarted" command="cmd_uninstall"/>
-                            <button class="uninstallShow cancelUninstall"
-                                label="Cancel" accesskey="C"
-                                tooltiptext="Cancel the pending uninstall for this Add-on" command="cmd_cancelUninstall"/>
+                            <button class="uninstallHide uninstallButton" command="cmd_uninstall"/>
+                            <button class="uninstallShow cancelUninstall" command="cmd_cancelUninstall"/>
                         </hbox>
                     </vbox>
                 </hbox>
@@ -389,9 +382,36 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
             listitem.setAttribute("homepageURL", theme.homepageURL ? theme.homepageURL : "");
 
             if (!theme.compatible) {
-                let incompatibleLabel = fragment.querySelector("#incompatibleLabel");
+                let incompatibleLabel = fragment.querySelector("[anonid='incompatibleLabel']");
                 incompatibleLabel.value = this.stringbundle.getFormattedString("incompatibleAddonMsg", [Services.appinfo.name, Services.appinfo.version]);
             }
+
+            let uninstallLabel = fragment.querySelector("[anonid='uninstallLabel']");
+            uninstallLabel.value = this.stringbundle.getFormattedString("toBeUninstalled_label", [Services.appinfo.name]);
+
+            let enableLabel = fragment.querySelector("[anonid='enableLabel']");
+            enableLabel.value = this.stringbundle.getFormattedString("toBeEnabled_label", [Services.appinfo.name]);
+
+            let restartBrowser = fragment.querySelectorAll(".restartBrowser");
+            for (let link of restartBrowser) {
+                link.value = this.stringbundle.getFormattedString("cmd_restartApp_label", [Services.appinfo.name]);
+                link.setAttribute("tooltiptext", this.stringbundle.getFormattedString("cmd_restartApp_tooltip", [Services.appinfo.name]));
+            }
+
+            let cancelUninstallButton = fragment.querySelector(".cancelUninstall");
+            cancelUninstallButton.setAttribute("label", this.stringbundle.getString("cancel_label"));
+            cancelUninstallButton.setAttribute("accesskey", this.stringbundle.getString("cancel_accesskey"));
+            cancelUninstallButton.setAttribute("tooltiptext", this.stringbundle.getString("cmd_cancelUninstall_tooltip"));
+
+            let uninstallButton = fragment.querySelector(".uninstallButton");
+            uninstallButton.setAttribute("label", this.stringbundle.getString("cmd_uninstall_label"));
+            uninstallButton.setAttribute("accesskey", this.stringbundle.getString("cmd_uninstall_accesskey"));
+            uninstallButton.setAttribute("tooltiptext", this.stringbundle.getFormattedString("cmd_uninstall_tooltip", [Services.appinfo.name]));
+
+            let useThemeButton = fragment.querySelector(".useThemeButton");
+            useThemeButton.setAttribute("label", this.stringbundle.getString("cmd_useTheme_label"));
+            useThemeButton.setAttribute("accesskey", this.stringbundle.getString("cmd_useTheme_accesskey"));
+            useThemeButton.setAttribute("tooltiptext", this.stringbundle.getFormattedString("cmd_useTheme_tooltip", [Services.appinfo.name]));
 
             listitem.appendChild(fragment);
             return listitem;
