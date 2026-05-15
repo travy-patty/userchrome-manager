@@ -51,16 +51,24 @@
         <vbox id="themePreviewArea" persist="width">
             <deck id="previewImageDeck" flex="1">
                 <vbox id="noThemeSelected" pack="center" align="center">
-                    <label class="previewText">No Theme Selected</label>
+                    <label class="previewText">&previewNoThemeSelected.label;</label>
                 </vbox>
                 <vbox id="noPreviewImage" pack="center" align="center">
-                    <label class="previewText">This Theme does not have a Preview Image</label>
+                    <label class="previewText">&previewNoPreviewImage.label;</label>
                 </vbox>
                 <vbox id="previewImageContainer" align="center" pack="center">
                     <image id="previewImage" />
                 </vbox>
             </deck>
         </vbox>
+    </hbox>
+
+    <hbox id="commandBarBottom" align="center">
+        <button id="installFileButton"
+                command="cmd_installFile"
+                label="&cmd.installFileTheme.label;"
+                tooltiptext="&cmd.installFileTheme.tooltip;"
+                accesskey="&cmd.installFileTheme.accesskey;"/>
     </hbox>
 
     <script src="chrome://uchrm/content/pages/userchrome/userchrome.js" type="text/javascript"></script>

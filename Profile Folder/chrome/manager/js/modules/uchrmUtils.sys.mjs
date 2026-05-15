@@ -21,6 +21,32 @@ function parseRDFField(content, field) {
     return content.match(new RegExp(`<em:${field}>(.*?)<\/em:${field}>`))?.[1]?.trim() ?? null;
 }
 
+function removeDir(dir) {
+    let children = [];
+    let enumerator = dir.directoryEntries;
+    while (enumerator.hasMoreElements()) {
+        children.push(enumerator.nextFile);
+    }
+
+    for (let child of children) {
+        if (child.isDirectory()) {
+            removeDir(child);
+        } else {
+            try {
+                child.permissions = 0o666;
+            }
+            catch (ex) {}
+            child.remove(false);
+        }
+    }
+
+    try {
+        dir.permissions = 0o777;
+    }
+    catch (ex) {}
+    dir.remove(false);
+}
+
 export function getThemeInstall(aValue) {
     let theme = ThemeInfo.getActive();
     if (!theme?.dir) return null;
@@ -57,28 +83,23 @@ export class ThemeInfo {
         Object.freeze(this);
     }
 
-    /** The nsIFile for the theme's root directory. */
     get dir() {
         return this.#dir;
     }
 
-    /** Whether this theme is the currently active one. */
     get isActive() {
         return Services.prefs.getStringPref(ACTIVE_THEME_PREF, "") === this.internalName;
     }
 
-    /** Activate this theme by setting the pref (requires restart to take effect). */
     activate() {
         Services.prefs.setStringPref(ACTIVE_THEME_PREF, this.internalName);
     }
 
-    /** Whether this theme is marked for removal on next restart. */
     get isPendingUninstall() {
         let pending = JSON.parse(Services.prefs.getStringPref(PENDING_UNINSTALL_PREF, "[]"));
         return pending.includes(this.internalName);
     }
 
-    /** Mark this theme for removal on next restart. */
     markForUninstall() {
         let pending = JSON.parse(Services.prefs.getStringPref(PENDING_UNINSTALL_PREF, "[]"));
         if (!pending.includes(this.internalName)) {
@@ -87,7 +108,6 @@ export class ThemeInfo {
         }
     }
 
-    /** Cancel a pending uninstall for this theme. */
     cancelUninstall() {
         let pending = JSON.parse(Services.prefs.getStringPref(PENDING_UNINSTALL_PREF, "[]"));
         let idx = pending.indexOf(this.internalName);
@@ -101,12 +121,7 @@ export class ThemeInfo {
         }
     }
 
-    /**
-     * Scan chrome/themes/ and return a ThemeInfo for every directory that
-     * contains a valid install.rdf with an em:internalName.
-     * @returns {ThemeInfo[]}
-     */
-    static #defaultTheme = Object.freeze({
+    static defaultTheme = Object.freeze({
         id:           "default-theme@userchrome-manager",
         get version() { return Services.appinfo.version; },
         internalName: "default",
@@ -125,7 +140,7 @@ export class ThemeInfo {
     });
 
     static getAll() {
-        let results = [ThemeInfo.#defaultTheme];
+        let results = [ThemeInfo.defaultTheme];
         let themesDir = Services.dirsvc.get("UChrm", Ci.nsIFile);
         themesDir.append(THEMES_RELATIVE_PATH);
         if (!themesDir.exists() || !themesDir.isDirectory()) return results;
@@ -150,29 +165,99 @@ export class ThemeInfo {
         return results;
     }
 
-    /**
-     * Get the ThemeInfo for a specific internalName, or null if not found.
-     * @param {string} internalName
-     * @returns {ThemeInfo|null}
-     */
     static getByInternalName(internalName) {
         return ThemeInfo.getAll().find(t => t.internalName === internalName) ?? null;
     }
 
-    /**
-     * Get the currently active theme's ThemeInfo, or null if none is set / found.
-     * @returns {ThemeInfo|null}
-     */
     static getActive() {
         let pref = Services.prefs.getStringPref(ACTIVE_THEME_PREF, "") || "default";
         return ThemeInfo.getByInternalName(pref);
     }
 
-    /**
-     * Delete the folders of all themes marked for uninstall. Call this once at
-     * startup, before the themes list is displayed. Themes that fail to delete
-     * remain in the pending list and will be retried on the next restart.
-     */
+    static installFromZip(zipFile, { overwrite = false } = {}) {
+        let zr = Cc["@mozilla.org/libjar/zip-reader;1"].createInstance(Ci.nsIZipReader);
+
+        try {
+            zr.open(zipFile);
+        }
+        catch (ex) {
+            throw { code: "INVALID_ZIP", cause: ex };
+        }
+
+        try {
+            if (!zr.hasEntry("install.rdf")) {
+                throw { code: "NO_RDF" };
+            }
+
+            let stream = zr.getInputStream("install.rdf");
+
+            let cis = Cc["@mozilla.org/intl/converter-input-stream;1"].createInstance(Ci.nsIConverterInputStream);
+            cis.init(stream, "UTF-8", 8192, Ci.nsIConverterInputStream.DEFAULT_REPLACEMENT_CHARACTER);
+
+            let rdfContent = "";
+            let chunk = {};
+            while (cis.readString(8192, chunk) > 0) rdfContent += chunk.value;
+
+            cis.close();
+            stream.close();
+
+            let internalName = parseRDFField(rdfContent, "internalName");
+            if (!internalName) {
+                throw { code: "NO_INTERNAL_NAME" };
+            }
+
+            internalName = internalName.replace(/[\\/]/g, "").trim();
+            if (!internalName) {
+                throw { code: "NO_INTERNAL_NAME" };
+            }
+
+            if (!overwrite && ThemeInfo.getByInternalName(internalName) !== null) {
+                throw { code: "ALREADY_EXISTS", internalName };
+            }
+
+            let themesDir = Services.dirsvc.get("UChrm", Ci.nsIFile);
+            themesDir.append(THEMES_RELATIVE_PATH);
+            if (!themesDir.exists()) {
+                themesDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
+            }
+
+            let targetDir = themesDir.clone();
+            targetDir.append(internalName);
+
+            if (targetDir.exists()) {
+                removeDir(targetDir);
+            }
+            targetDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
+
+            let entries = zr.findEntries(null);
+            while (entries.hasMore()) {
+                let name = entries.getNext();
+                if (name.endsWith("/"))
+                    continue;
+
+                let parts = name.split("/").filter(p => p.length > 0 && p !== ".");
+                let file = targetDir.clone();
+
+                for (let i = 0; i < parts.length - 1; i++) {
+                    file.append(parts[i]);
+                    if (!file.exists()) {
+                        file.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
+                    }
+                }
+
+                file.append(parts[parts.length - 1]);
+                if (file.exists()) {
+                    file.remove(false);
+                }
+                zr.extract(name, file);
+            }
+
+            return new ThemeInfo(targetDir, rdfContent);
+        } finally {
+            zr.close();
+        }
+    }
+
     static processPendingUninstalls() {
         let pending = JSON.parse(Services.prefs.getStringPref(PENDING_UNINSTALL_PREF, "[]"));
         if (!pending.length) return;
@@ -182,7 +267,7 @@ export class ThemeInfo {
             let theme = ThemeInfo.getByInternalName(internalName);
             if (!theme) continue; // already gone
             try {
-                theme.#dir.remove(true);
+                removeDir(theme.#dir);
             } catch (ex) {
                 console.error(`userchrome-manager: failed to remove theme folder for ${internalName}`, ex);
                 failed.push(internalName);

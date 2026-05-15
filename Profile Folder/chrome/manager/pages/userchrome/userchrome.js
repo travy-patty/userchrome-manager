@@ -7,6 +7,8 @@ const OP_NEEDS_UNINSTALL              = "needs-uninstall";
 const OP_NEEDS_ENABLE                 = "needs-enable";
 const OP_NEEDS_DISABLE                = "needs-disable";
 
+const nsIFilePicker = Components.interfaces.nsIFilePicker;
+
 {
     let { ThemeInfo } = ChromeUtils.importESModule("chrome://uchrmjs/content/modules/uchrmUtils.sys.mjs");
 
@@ -18,6 +20,10 @@ const OP_NEEDS_DISABLE                = "needs-disable";
                 this._stringbundle = document.getElementById("optionsBundle");
             }
             return this._stringbundle;
+        }
+
+        get _themesBox() {
+            return document.getElementById("themesBox");
         }
 
         get _themesListBox() {
@@ -56,6 +62,7 @@ const OP_NEEDS_DISABLE                = "needs-disable";
 
         init() {
             this.renderThemesList();
+            this._initDragDrop();
 
             this._commandSet.addEventListener("command", (e) => {
                 this.doThemeCommand(e.target.id);
@@ -115,6 +122,10 @@ const OP_NEEDS_DISABLE                = "needs-disable";
 
             cmd_restartApp: (e) => {
                 this.restartApp();
+            },
+
+            cmd_installFile: (e) => {
+                this.installSkin();
             }
         }
 
@@ -264,6 +275,37 @@ const OP_NEEDS_DISABLE                = "needs-disable";
             }
         }
 
+        _addInstalledTheme(theme) {
+            let existing = document.getElementById("urn:mozilla:item:" + theme.id);
+            if (existing) {
+                existing.remove();
+            }
+
+            for (let listitem of this._themesListBox.itemChildren) {
+                if (listitem.getAttribute("opType") === OP_NEEDS_ENABLE) {
+                    listitem.setAttribute("opType", OP_NONE);
+                }
+            }
+
+            theme.activate();
+
+            let listitem = this._createThemeListItem(theme);
+            listitem.setAttribute("opType", OP_NEEDS_ENABLE);
+
+            for (let restartLink of listitem.querySelectorAll(".restartBrowser")) {
+                restartLink.addEventListener("click", () => {
+                    this.doGlobalCommand("cmd_restartApp");
+                });
+            }
+
+            this._themesListBox.appendChild(listitem);
+            this._themesListBox.selectItem(listitem);
+            this._themesListBox.focus();
+            this.handleThemesListBox();
+            this.onCommandUpdate();
+            this.updateGlobalCommands();
+        }
+
         _createThemeListItem(theme) {
             let listitem = document.createXULElement("richlistitem");
 
@@ -404,6 +446,97 @@ const OP_NEEDS_DISABLE                = "needs-disable";
             }
             Components.classes["@mozilla.org/toolkit/app-startup;1"].getService(nsIAppStartup)
                 .quit(nsIAppStartup.eRestart | nsIAppStartup.eAttemptQuit);
+        }
+
+        installSkin() {
+            let fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
+            fp.init(
+                window.browsingContext,
+                this.stringbundle.getString("installThemePickerTitle"),
+                Ci.nsIFilePicker.modeOpen
+            );
+            fp.appendFilter(this.stringbundle.getString("themesFilter"), "*.zip");
+            fp.appendFilters(Ci.nsIFilePicker.filterAll);
+
+            fp.open(rv => {
+                if (rv != Ci.nsIFilePicker.returnOK) return;
+                this._doInstall(fp.file);
+            });
+        }
+
+        _doInstall(file, overwrite = false) {
+            let theme;
+
+            try {
+                theme = ThemeInfo.installFromZip(file, { overwrite });
+            }
+            catch (err) {
+                if (err?.code == "ALREADY_EXISTS") {
+                    let overwriteStruct = {
+                        accepted: false,
+                        icon: "warning",
+                        title: this.stringbundle.getFormattedString("install_overwrite_title", [err.internalName]),
+                        message: this.stringbundle.getFormattedString("install_overwrite_message", [err.internalName]),
+                        acceptButtonText: this.stringbundle.getString("install_overwrite_button")
+                    };
+                    windowRoot.ownerGlobal.openDialog(
+                        "chrome://uchrm/content/windows/common/dialog.xhtml",
+                        overwriteStruct.title,
+                        "chrome,centerscreen,resizeable=no,dependent,modal",
+                        overwriteStruct
+                    );
+                    if (overwriteStruct.accepted) {
+                        this._doInstall(file, true);
+                    }
+                    return;
+                }
+
+                Services.prompt.alert(
+                    window,
+                    this.stringbundle.getString("install_error_title"),
+                    this.stringbundle.getString("install_error_message")
+                );
+
+                return;
+            }
+
+            this._addInstalledTheme(theme);
+        }
+
+        _initDragDrop() {
+            this._themesBox.addEventListener("dragenter", (e) => {
+                if (!e.dataTransfer.types.includes("Files"))
+                    return;
+                e.preventDefault();
+                this._themesBox.setAttribute("dragover", "true");
+            });
+
+            this._themesBox.addEventListener("dragover", (e) => {
+                if (!e.dataTransfer.types.includes("Files"))
+                    return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+            });
+
+            this._themesBox.addEventListener("dragleave", (e) => {
+                if (!this._themesBox.contains(e.relatedTarget)) {
+                    this._themesBox.removeAttribute("dragover");
+                }
+            });
+
+            this._themesBox.addEventListener("drop", (e) => {
+                e.preventDefault();
+                this._themesBox.removeAttribute("dragover");
+
+                for (let i = 0; i < e.dataTransfer.mozItemCount; i++) {
+                    let file = e.dataTransfer.mozGetDataAt("application/x-moz-file", i);
+                    if (!(file instanceof Ci.nsIFile))
+                        continue;
+                    if (!file.leafName.toLowerCase().endsWith(".zip"))
+                        continue;
+                    this._doInstall(file);
+                }
+            });
         }
     }
 

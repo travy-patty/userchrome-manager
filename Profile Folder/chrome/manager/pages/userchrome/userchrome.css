@@ -1,5 +1,5 @@
 #themesBox {
-    margin: 10px;
+    margin: 10px 10px 0px 10px;
 }
 
 richlistitem {
@@ -124,4 +124,15 @@ richlistitem[opType="needs-enable"] .enableShow {
 
 .statusMsgLabel {
     font-weight: bold;
+}
+
+
+#commandBarBottom {
+    margin: 10px 10px 5px 10px;
+    min-width: 1px;
+}
+
+#commandBarBottom button {
+    margin: 0;
+    margin-inline-end: 5px;
 }

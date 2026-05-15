@@ -3,35 +3,27 @@
 <!ENTITY window.width "520">
 <!ENTITY window.height "280">
 
-<!ENTITY cmd.useTheme.label               "Use Theme">
-<!ENTITY cmd.useTheme.accesskey           "T">
-<!ENTITY cmd.useTheme.tooltip             "Changes PLACEHOLDER Theme">
-<!ENTITY cmd.options.label                "Options">
-<!ENTITY cmd.options.accesskey            "O">
-<!ENTITY cmd.options.tooltip              "Set Options for the selected Extension">
-<!ENTITY cmd.optionsUnix.label            "Preferences">
-<!ENTITY cmd.optionsUnix.accesskey        "r">
-<!ENTITY cmd.optionsUnix.tooltip          "Edit Preferences for the selected Extension">
-<!ENTITY cmd.enable.label                 "Enable">
-<!ENTITY cmd.enable.accesskey             "E">
-<!ENTITY cmd.enable.tooltip               "Enable this Add-on when PLACEHOLDER is restarted">
-<!ENTITY cmd.disable.label                "Disable">
-<!ENTITY cmd.disable.accesskey            "D">
-<!ENTITY cmd.disable.tooltip              "Disable this Add-on when PLACEHOLDER is restarted">
-<!ENTITY cmd.uninstall.label              "Uninstall">
-<!ENTITY cmd.uninstall2.accesskey         "U">
-<!ENTITY cmd.uninstall2.tooltip           "Uninstall this Add-on when PLACEHOLDER is restarted">
-<!ENTITY cmd.cancelUninstall.label        "Cancel Uninstall">
-<!ENTITY cmd.cancelUninstall.accesskey    "C">
-<!ENTITY cmd.cancelUninstall.tooltip      "Cancel the uninstall of this Add-on">
-<!ENTITY cmd.installUpdate.label          "Install Update">
-<!ENTITY cmd.installUpdate.accesskey      "I">
-<!ENTITY cmd.installUpdate.tooltip        "Install an update for this Add-on">
-<!-- The selected add-on's cancel action button label -->
-<!ENTITY cancel.label                     "Cancel">
-<!ENTITY cancel.accesskey                 "C">
+<!ENTITY cmd.useTheme.label "Use Theme">
+<!ENTITY cmd.useTheme.accesskey "T">
 
-<!ENTITY cmd.homepage.label               "Visit Home Page">
-<!ENTITY cmd.homepage.accesskey           "H">
-<!ENTITY cmd.about2.label                 "About this Add-on">
-<!ENTITY cmd.about.accesskey              "A">
+<!ENTITY cmd.uninstall.label "Uninstall">
+<!ENTITY cmd.uninstall2.accesskey "U">
+
+<!ENTITY cmd.cancelUninstall.label "Cancel Uninstall">
+<!ENTITY cmd.cancelUninstall.accesskey "C">
+<!ENTITY cmd.cancelUninstall.tooltip "Cancel the uninstall of this Add-on">
+
+<!ENTITY cancel.label "Cancel">
+<!ENTITY cancel.accesskey "C">
+
+<!ENTITY cmd.homepage.label "Visit Home Page">
+<!ENTITY cmd.homepage.accesskey "H">
+<!ENTITY cmd.about2.label "About this Add-on">
+<!ENTITY cmd.about.accesskey "A">
+
+<!ENTITY cmd.installFileTheme.label "Install Theme...">
+<!ENTITY cmd.installFileTheme.accesskey "I">
+<!ENTITY cmd.installFileTheme.tooltip "Install a Theme">
+
+<!ENTITY previewNoThemeSelected.label "No Theme Selected">
+<!ENTITY previewNoPreviewImage.label "This Theme does not have a Preview Image">
