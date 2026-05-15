@@ -55,6 +55,50 @@ try
                 let match = content.match(/<em:internalName>(.*?)<\/em:internalName>/);
 
                 if (match && match[1] === internalName) {
+                    // Compatibility check
+                    let isCompatible = true;
+                    let appInfo = Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULAppInfo);
+                    let appName = appInfo.name;
+                    let appVersion = appInfo.version;
+
+                    for (let [block] of content.matchAll(/<em:excludeApplication>[\s\S]*?<\/em:excludeApplication>/g)) {
+                        let excId = block.match(/<em:id>(.*?)<\/em:id>/)?.[1]?.trim();
+                        if (excId && excId.toLowerCase() === appName.toLowerCase()) {
+                            isCompatible = false;
+                            break;
+                        }
+                    }
+
+                    if (isCompatible) {
+                        let allTargets = [...content.matchAll(/<em:targetApplication>[\s\S]*?<\/em:targetApplication>/g)]
+                            .map(([block]) => ({
+                                id:         block.match(/<em:id>(.*?)<\/em:id>/)?.[1]?.trim() ?? null,
+                                minVersion: block.match(/<em:minVersion>(.*?)<\/em:minVersion>/)?.[1]?.trim() ?? null,
+                                maxVersion: block.match(/<em:maxVersion>(.*?)<\/em:maxVersion>/)?.[1]?.trim() ?? null,
+                            }));
+                        let namedTargets = allTargets.filter(t => t.id != null);
+                        let versionTarget;
+
+                        if (namedTargets.length > 0) {
+                            versionTarget = namedTargets.find(t => t.id.toLowerCase() === appName.toLowerCase());
+                            if (!versionTarget) isCompatible = false;
+                        } else {
+                            versionTarget = allTargets[0] ?? null;
+                        }
+
+                        if (isCompatible && versionTarget) {
+                            let vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
+                            if (versionTarget.minVersion && vc.compare(appVersion, versionTarget.minVersion) < 0) isCompatible = false;
+                            if (isCompatible && versionTarget.maxVersion && versionTarget.maxVersion !== "*" &&
+                                vc.compare(appVersion, versionTarget.maxVersion) > 0) isCompatible = false;
+                        }
+                    }
+
+                    if (!isCompatible) {
+                        dump(`userchrome-manager: active theme "${internalName}" is not compatible with ${appName} ${appVersion}, skipping\n`);
+                        break;
+                    }
+
                     foundManifest = entry.clone();
                     foundManifest.append("chrome.manifest");
                     break;

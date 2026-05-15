@@ -208,6 +208,7 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
                 case "cmd_useTheme":
                     return selectedItem.getAttribute("internalName") != ThemeInfo.getActive().internalName &&
                            !ThemeInfo.getByInternalName(selectedItem.getAttribute("internalName")).isPendingUninstall &&
+                           selectedItem.getAttribute("compatible") !== "false" &&
                            selectedItem.getAttribute("opType") !== OP_NEEDS_ENABLE;
                 case "cmd_uninstall":
                     return selectedItem.getAttribute("internalName") != ThemeInfo.getActive().internalName &&
@@ -281,16 +282,21 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
                 existing.remove();
             }
 
-            for (let listitem of this._themesListBox.itemChildren) {
-                if (listitem.getAttribute("opType") === OP_NEEDS_ENABLE) {
-                    listitem.setAttribute("opType", OP_NONE);
+            if (theme.compatible !== false) {
+                for (let listitem of this._themesListBox.itemChildren) {
+                    if (listitem.getAttribute("opType") === OP_NEEDS_ENABLE) {
+                        listitem.setAttribute("opType", OP_NONE);
+                    }
                 }
+
+                theme.activate();
             }
 
-            theme.activate();
-
             let listitem = this._createThemeListItem(theme);
-            listitem.setAttribute("opType", OP_NEEDS_ENABLE);
+
+            if (theme.compatible !== false) {
+                listitem.setAttribute("opType", OP_NEEDS_ENABLE);
+            }
 
             for (let restartLink of listitem.querySelectorAll(".restartBrowser")) {
                 restartLink.addEventListener("click", () => {
@@ -332,6 +338,9 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
 
                                 <label class="text-link startMsgLink restartBrowser"
                                     value="Restart Firefox" />
+                            </hbox>
+                            <hbox class="incompatibleBox attention">
+                                <label class="statusMsgLabel" id="incompatibleLabel" crop="end"/>
                             </hbox>
                         </vbox>
                         <hbox flex="1" class="selectedButtons">
@@ -376,7 +385,13 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
             listitem.setAttribute("internalName", theme.internalName);
             listitem.setAttribute("name", theme.name);
             listitem.setAttribute("version", theme.version);
+            listitem.setAttribute("compatible", theme.compatible);
             listitem.setAttribute("homepageURL", theme.homepageURL ? theme.homepageURL : "");
+
+            if (!theme.compatible) {
+                let incompatibleLabel = fragment.querySelector("#incompatibleLabel");
+                incompatibleLabel.value = this.stringbundle.getFormattedString("incompatibleAddonMsg", [Services.appinfo.name, Services.appinfo.version]);
+            }
 
             listitem.appendChild(fragment);
             return listitem;

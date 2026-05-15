@@ -21,6 +21,30 @@ function parseRDFField(content, field) {
     return content.match(new RegExp(`<em:${field}>(.*?)<\/em:${field}>`))?.[1]?.trim() ?? null;
 }
 
+function parseAppBlocks(content, tagName) {
+    const blocks = [];
+    const re = new RegExp(`<em:${tagName}>[\\s\\S]*?<\\/em:${tagName}>`, "g");
+    let match;
+    while ((match = re.exec(content)) !== null) {
+        blocks.push(match[0]);
+    }
+    return blocks;
+}
+
+function parseTargetApplications(content) {
+    return parseAppBlocks(content, "targetApplication").map(block => ({
+        id:         parseRDFField(block, "id"),
+        minVersion: parseRDFField(block, "minVersion"),
+        maxVersion: parseRDFField(block, "maxVersion"),
+    }));
+}
+
+function parseExcludeApplications(content) {
+    return parseAppBlocks(content, "excludeApplication").map(block => ({
+        id: parseRDFField(block, "id"),
+    }));
+}
+
 function removeDir(dir) {
     let children = [];
     let enumerator = dir.directoryEntries;
@@ -60,8 +84,10 @@ export class ThemeInfo {
         this.description  = parseRDFField(rdfContent, "description");
         this.creator      = parseRDFField(rdfContent, "creator");
         this.homepageURL  = parseRDFField(rdfContent, "homepageURL");
-        this.minVersion   = parseRDFField(rdfContent, "minVersion");
-        this.maxVersion   = parseRDFField(rdfContent, "maxVersion");
+        this.targetApplications  = parseTargetApplications(rdfContent);
+        this.excludeApplications = parseExcludeApplications(rdfContent);
+        this.minVersion = this.targetApplications[0]?.minVersion ?? null;
+        this.maxVersion = this.targetApplications[0]?.maxVersion ?? null;
 
         const iconFile = themeDir.clone();
         iconFile.append("icon.png");
@@ -112,6 +138,33 @@ export class ThemeInfo {
         }
     }
 
+    get compatible() {
+        const appName    = Services.appinfo.name;
+        const appVersion = Services.appinfo.version;
+
+        for (let { id } of this.excludeApplications) {
+            if (id && id.toLowerCase() === appName.toLowerCase()) return false;
+        }
+
+        const namedTargets = this.targetApplications.filter(t => t.id != null);
+        let versionTarget;
+        if (namedTargets.length > 0) {
+            versionTarget = namedTargets.find(t => t.id.toLowerCase() === appName.toLowerCase());
+            if (!versionTarget) return false;
+        } else {
+            versionTarget = this.targetApplications[0] ?? null;
+        }
+
+        if (versionTarget) {
+            const vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
+            if (versionTarget.minVersion && vc.compare(appVersion, versionTarget.minVersion) < 0) return false;
+            if (versionTarget.maxVersion && versionTarget.maxVersion !== "*" &&
+                vc.compare(appVersion, versionTarget.maxVersion) > 0) return false;
+        }
+
+        return true;
+    }
+
     static defaultTheme = Object.freeze({
         id:           "default",
         get version() { return Services.appinfo.version; },
@@ -123,8 +176,13 @@ export class ThemeInfo {
         icon:         null,
         preview:      null,
         dir:          null,
+        targetApplications:  [],
+        excludeApplications: [],
+        minVersion:          null,
+        maxVersion:          null,
         get isActive()         { let p = Services.prefs.getStringPref(ACTIVE_THEME_PREF, ""); return p === "default" || p === ""; },
         get isPendingUninstall() { return false; },
+        get compatible()     { return true; },
         activate()             { Services.prefs.setStringPref(ACTIVE_THEME_PREF, "default"); },
         markForUninstall()     {},
         cancelUninstall()      {},
