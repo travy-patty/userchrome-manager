@@ -221,26 +221,35 @@ export class ThemeInfo {
             targetDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
 
             let entries = zr.findEntries(null);
-            while (entries.hasMore()) {
-                let name = entries.getNext();
-                if (name.endsWith("/"))
-                    continue;
+            try {
+                while (entries.hasMore()) {
+                    let name = entries.getNext();
+                    let normalized = name.replace(/\\/g, "/");
+                    if (normalized.endsWith("/"))
+                        continue;
 
-                let parts = name.split("/").filter(p => p.length > 0 && p !== ".");
-                let file = targetDir.clone();
+                    let parts = normalized.split("/").filter(p => p.length > 0 && p !== "." && p !== "..");
+                    if (!parts.length) continue;
+                    let file = targetDir.clone();
 
-                for (let i = 0; i < parts.length - 1; i++) {
-                    file.append(parts[i]);
-                    if (!file.exists()) {
-                        file.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        file.append(parts[i]);
+                        if (!file.exists()) {
+                            file.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
+                        }
                     }
-                }
 
-                file.append(parts[parts.length - 1]);
-                if (file.exists()) {
-                    file.remove(false);
+                    file.append(parts[parts.length - 1]);
+                    if (file.exists()) {
+                        file.remove(false);
+                    }
+                    zr.extract(name, file);
                 }
-                zr.extract(name, file);
+            } catch (ex) {
+                if (targetDir.exists()) {
+                    removeDir(targetDir);
+                }
+                throw ex;
             }
 
             return new ThemeInfo(targetDir, rdfContent);
@@ -258,7 +267,7 @@ export class ThemeInfo {
             let theme = ThemeInfo.getByInternalName(internalName);
             if (!theme) continue; // already gone
             try {
-                removeDir(theme.#dir);
+                removeDir(theme.dir);
             } catch (ex) {
                 console.error(`userchrome-manager: failed to remove theme folder for ${internalName}`, ex);
                 failed.push(internalName);
