@@ -7,7 +7,8 @@
 // ==/UserScript===
 
 {
-    let { ThemeInfo, waitForElement } = ChromeUtils.importESModule("chrome://uchrmjs/content/modules/uchrmUtils.sys.mjs");
+    let { ThemeInfo } = ChromeUtils.importESModule("chrome://uchrmjs/content/modules/ThemeInfo.sys.mjs");
+    let { waitForElement } = ChromeUtils.importESModule("chrome://uchrmjs/content/modules/uchrmUtils.sys.mjs");
     waitForElement = waitForElement.bind(window);
 
     let menuViewPopup = document.getElementById("menu_viewPopup");

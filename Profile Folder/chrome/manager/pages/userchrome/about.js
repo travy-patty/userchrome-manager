@@ -1,7 +1,7 @@
 var g_genericAbout;
 
 {
-    let { ThemeInfo } = ChromeUtils.importESModule("chrome://uchrmjs/content/modules/uchrmUtils.sys.mjs");
+    let { ThemeInfo } = ChromeUtils.importESModule("chrome://uchrmjs/content/modules/ThemeInfo.sys.mjs");
 
     class GenericAbout {
         _arguments = window.arguments;
