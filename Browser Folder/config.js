@@ -132,7 +132,7 @@ try
             let userContentFile = themeDir.clone();
             userContentFile.append("userContent.css");
             if (userContentFile.exists()) {
-                sss.loadAndRegisterSheet(ios.newFileURI(userContentFile), sss.AUTHOR_SHEET);
+                sss.loadAndRegisterSheet(ios.newFileURI(userContentFile), sss.USER_SHEET);
             }
         }
 
