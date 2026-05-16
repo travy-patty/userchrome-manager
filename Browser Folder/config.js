@@ -116,7 +116,11 @@ try
             // ChromeUtils.importESModule does not support file:// URLs, as a workaround
             // we will have to set a userchrome content manifest in the theme's files
             // to load it's chrome.sys.mjs file.
-            ChromeUtils.importESModule("chrome://userchrome/content/chrome.sys.mjs");
+            let chromeSysMjs = themeDir.clone();
+            chromeSysMjs.append("chrome.sys.mjs");
+            if (chromeSysMjs.exists()) {
+                ChromeUtils.importESModule("chrome://userchrome/content/chrome.sys.mjs");
+            }
 
             // Register User Profile Customizations stylesheets
             let userChromeFile = themeDir.clone();
