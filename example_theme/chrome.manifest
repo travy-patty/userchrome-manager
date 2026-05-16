@@ -1,0 +1,6 @@
+content     userchrome                              ./
+
+content     userscripts                             chrome/content/JS/
+
+skin        exampletheme    sample                  chrome/skin/
+content     exampletheme    chrome/content          contentaccessible=yes
