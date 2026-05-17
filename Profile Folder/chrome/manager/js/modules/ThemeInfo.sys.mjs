@@ -45,6 +45,33 @@ function parseExcludeApplications(content) {
     }));
 }
 
+function checkCompatible(targetApplications, excludeApplications) {
+    const appName    = Services.appinfo.name;
+    const appVersion = Services.appinfo.version;
+
+    for (let { id } of excludeApplications) {
+        if (id && id.toLowerCase() === appName.toLowerCase()) return false;
+    }
+
+    const namedTargets = targetApplications.filter(t => t.id != null);
+    let versionTarget;
+    if (namedTargets.length > 0) {
+        versionTarget = namedTargets.find(t => t.id.toLowerCase() === appName.toLowerCase());
+        if (!versionTarget) return false;
+    } else {
+        versionTarget = targetApplications[0] ?? null;
+    }
+
+    if (versionTarget) {
+        const vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
+        if (versionTarget.minVersion && vc.compare(appVersion, versionTarget.minVersion) < 0) return false;
+        if (versionTarget.maxVersion && versionTarget.maxVersion !== "*" &&
+            vc.compare(appVersion, versionTarget.maxVersion) > 0) return false;
+    }
+
+    return true;
+}
+
 function removeDir(dir) {
     let children = [];
     let enumerator = dir.directoryEntries;
@@ -139,30 +166,7 @@ export class ThemeInfo {
     }
 
     get compatible() {
-        const appName    = Services.appinfo.name;
-        const appVersion = Services.appinfo.version;
-
-        for (let { id } of this.excludeApplications) {
-            if (id && id.toLowerCase() === appName.toLowerCase()) return false;
-        }
-
-        const namedTargets = this.targetApplications.filter(t => t.id != null);
-        let versionTarget;
-        if (namedTargets.length > 0) {
-            versionTarget = namedTargets.find(t => t.id.toLowerCase() === appName.toLowerCase());
-            if (!versionTarget) return false;
-        } else {
-            versionTarget = this.targetApplications[0] ?? null;
-        }
-
-        if (versionTarget) {
-            const vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
-            if (versionTarget.minVersion && vc.compare(appVersion, versionTarget.minVersion) < 0) return false;
-            if (versionTarget.maxVersion && versionTarget.maxVersion !== "*" &&
-                vc.compare(appVersion, versionTarget.maxVersion) > 0) return false;
-        }
-
-        return true;
+        return checkCompatible(this.targetApplications, this.excludeApplications);
     }
 
     static defaultTheme = Object.freeze({
@@ -220,7 +224,7 @@ export class ThemeInfo {
 
     static getActive() {
         let pref = Services.prefs.getStringPref(ACTIVE_THEME_PREF, "") || "default";
-        return ThemeInfo.getByInternalName(pref);
+        return ThemeInfo.getByInternalName(pref) ?? ThemeInfo.defaultTheme;
     }
 
     static installFromZip(zipFile, { overwrite = false } = {}) {
@@ -258,6 +262,19 @@ export class ThemeInfo {
             internalName = internalName.replace(/[\\/]/g, "").trim();
             if (!internalName) {
                 throw { code: "NO_INTERNAL_NAME" };
+            }
+
+            // Check compatibility before touching the file system
+            const _targetApps = parseTargetApplications(rdfContent);
+            const _excludeApps = parseExcludeApplications(rdfContent);
+            if (!checkCompatible(_targetApps, _excludeApps)) {
+                throw {
+                    code: "NOT_COMPATIBLE",
+                    themeName: parseRDFField(rdfContent, "name") || internalName,
+                    themeVersion: parseRDFField(rdfContent, "version"),
+                    minVersion: _targetApps[0]?.minVersion ?? null,
+                    maxVersion: _targetApps[0]?.maxVersion ?? null,
+                };
             }
 
             if (!overwrite && ThemeInfo.getByInternalName(internalName) !== null) {

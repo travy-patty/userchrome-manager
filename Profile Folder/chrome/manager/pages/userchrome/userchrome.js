@@ -169,22 +169,17 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
             cmd_uninstall: (aSelectedItem) => {
                 let currentTheme = aSelectedItem.getAttribute("internalName");
 
-                let uninstallStruct = {
-                    accepted: false,
-                    icon: "warning",
-                    title: this.stringbundle.getFormattedString("uninstall_prompt_title", [aSelectedItem.getAttribute("name")]),
-                    message: this.stringbundle.getFormattedString("uninstall_prompt_message", [aSelectedItem.getAttribute("name")]),
-                    acceptButtonText: this.stringbundle.getString("uninstall_prompt_uninstall")
-                };
-
-                windowRoot.ownerGlobal.openDialog(
-                    "chrome://uchrm/content/windows/common/dialog.xhtml",
+                let uninstallResult = Services.prompt.confirmEx(
+                    window,
                     this.stringbundle.getFormattedString("uninstall_prompt_title", [aSelectedItem.getAttribute("name")]),
-                    "chrome,centerscreen,resizeable=no,dependent,modal",
-                    uninstallStruct
+                    this.stringbundle.getFormattedString("uninstall_prompt_message", [aSelectedItem.getAttribute("name")]),
+                    Services.prompt.BUTTON_POS_0 * Services.prompt.BUTTON_TITLE_IS_STRING +
+                    Services.prompt.BUTTON_POS_1 * Services.prompt.BUTTON_TITLE_CANCEL,
+                    this.stringbundle.getString("uninstall_prompt_uninstall"),
+                    null, null, null, {}
                 );
 
-                if (uninstallStruct.accepted) {
+                if (uninstallResult == 0) {
                     ThemeInfo.getByInternalName(currentTheme).markForUninstall();
                     aSelectedItem.setAttribute("opType", OP_NEEDS_UNINSTALL);
                 };
@@ -282,7 +277,7 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
                 existing.remove();
             }
 
-            if (theme.compatible !== false) {
+            if (theme.compatible) {
                 for (let listitem of this._themesListBox.itemChildren) {
                     if (listitem.getAttribute("opType") === OP_NEEDS_ENABLE) {
                         listitem.setAttribute("opType", OP_NONE);
@@ -294,7 +289,7 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
 
             let listitem = this._createThemeListItem(theme);
 
-            if (theme.compatible !== false) {
+            if (theme.compatible) {
                 listitem.setAttribute("opType", OP_NEEDS_ENABLE);
             }
 
@@ -506,23 +501,36 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
                 theme = ThemeInfo.installFromZip(file, { overwrite });
             }
             catch (err) {
-                if (err?.code == "ALREADY_EXISTS") {
-                    let overwriteStruct = {
-                        accepted: false,
-                        icon: "warning",
-                        title: this.stringbundle.getFormattedString("install_overwrite_title", [err.internalName]),
-                        message: this.stringbundle.getFormattedString("install_overwrite_message", [err.internalName]),
-                        acceptButtonText: this.stringbundle.getString("install_overwrite_button")
-                    };
-                    windowRoot.ownerGlobal.openDialog(
-                        "chrome://uchrm/content/windows/common/dialog.xhtml",
-                        overwriteStruct.title,
-                        "chrome,centerscreen,resizeable=no,dependent,modal",
-                        overwriteStruct
+                if (err?.code == "NOT_COMPATIBLE") {
+                    Services.prompt.alert(
+                        window,
+                        this.stringbundle.getString("install_incompatible_title"),
+                        this.stringbundle.getFormattedString("install_incompatible_message", [
+                            err.themeName, err.themeVersion,
+                            Services.appinfo.name, Services.appinfo.version,
+                            err.themeName, err.themeVersion,
+                            Services.appinfo.name,
+                            err.minVersion ?? "?",
+                            err.maxVersion ?? "?"
+                        ])
                     );
-                    if (overwriteStruct.accepted) {
+                    return;
+                }
+
+                if (err?.code == "ALREADY_EXISTS") {
+                    let overwriteResult = Services.prompt.confirmEx(
+                        window,
+                        this.stringbundle.getString("install_overwrite_title"),
+                        this.stringbundle.getFormattedString("install_overwrite_message", [err.internalName]),
+                        Services.prompt.BUTTON_POS_0 * Services.prompt.BUTTON_TITLE_IS_STRING +
+                        Services.prompt.BUTTON_POS_1 * Services.prompt.BUTTON_TITLE_CANCEL,
+                        this.stringbundle.getString("install_overwrite_button"),
+                        null, null, null, {}
+                    );
+
+                    if (overwriteResult == 0) {
                         this._doInstall(file, true);
-                    }
+                    };
                     return;
                 }
 
