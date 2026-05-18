@@ -80,26 +80,6 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
 
             this.updateGlobalCommands();
             this.onCommandUpdate();
-
-            let savedWidth = Services.xulStore.getValue(document.documentURI, "themePreviewArea", "width");
-            if (savedWidth) {
-                this._themePreviewArea.style.width = savedWidth + "px";
-            }
-
-            let savedState = Services.xulStore.getValue(document.documentURI, "themeSplitter", "state");
-            if (savedState) {
-                this._themeSplitter.setAttribute("state", savedState);
-            }
-        }
-
-        unload() {
-            Services.xulStore.setValue(document.documentURI, "themePreviewArea", "width", String(this._themePreviewArea.getBoundingClientRect().width));
-
-            let state = this._themeSplitter.getAttribute("state");
-
-            if (state) {
-                Services.xulStore.setValue(document.documentURI, "themeSplitter", "state", state);
-            }
         }
 
         onPopupShowing(event) {
@@ -521,7 +501,7 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
                     let overwriteResult = Services.prompt.confirmEx(
                         window,
                         this.stringbundle.getString("install_overwrite_title"),
-                        this.stringbundle.getFormattedString("install_overwrite_message", [err.internalName]),
+                        this.stringbundle.getFormattedString("install_overwrite_message", [err.themeName]),
                         Services.prompt.BUTTON_POS_0 * Services.prompt.BUTTON_TITLE_IS_STRING +
                         Services.prompt.BUTTON_POS_1 * Services.prompt.BUTTON_TITLE_CANCEL,
                         this.stringbundle.getString("install_overwrite_button"),
@@ -586,9 +566,5 @@ const nsIFilePicker = Components.interfaces.nsIFilePicker;
     window.addEventListener("DOMContentLoaded", () => {
         g_userChromeOptions = new UserChromeOptions();
         g_userChromeOptions.init();
-    });
-
-    window.addEventListener("unload", () => {
-        g_userChromeOptions.unload();
     });
 }

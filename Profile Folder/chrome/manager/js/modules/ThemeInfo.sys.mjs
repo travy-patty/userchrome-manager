@@ -4,115 +4,21 @@ const THEMES_RELATIVE_PATH = "themes";
 const ACTIVE_THEME_PREF = "general.skins.selectedSkin";
 const PENDING_UNINSTALL_PREF = "general.skins.pendingUninstall";
 
-function readFileText(nsIFile) {
-    let fis = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
-    fis.init(nsIFile, 0x01, 0, 0);
-    let cis = Cc["@mozilla.org/intl/converter-input-stream;1"].createInstance(Ci.nsIConverterInputStream);
-    cis.init(fis, "UTF-8", 8192, Ci.nsIConverterInputStream.DEFAULT_REPLACEMENT_CHARACTER);
-    let content = "";
-    let chunk = {};
-    while (cis.readString(8192, chunk) > 0) content += chunk.value;
-    cis.close();
-    fis.close();
-    return content;
-}
-
-function parseRDFField(content, field) {
-    return content.match(new RegExp(`<em:${field}>(.*?)<\/em:${field}>`))?.[1]?.trim() ?? null;
-}
-
-function parseAppBlocks(content, tagName) {
-    const blocks = [];
-    const re = new RegExp(`<em:${tagName}>[\\s\\S]*?<\\/em:${tagName}>`, "g");
-    let match;
-    while ((match = re.exec(content)) !== null) {
-        blocks.push(match[0]);
-    }
-    return blocks;
-}
-
-function parseTargetApplications(content) {
-    return parseAppBlocks(content, "targetApplication").map(block => ({
-        id:         parseRDFField(block, "id"),
-        minVersion: parseRDFField(block, "minVersion"),
-        maxVersion: parseRDFField(block, "maxVersion"),
-    }));
-}
-
-function parseExcludeApplications(content) {
-    return parseAppBlocks(content, "excludeApplication").map(block => ({
-        id: parseRDFField(block, "id"),
-    }));
-}
-
-function checkCompatible(targetApplications, excludeApplications) {
-    const appName    = Services.appinfo.name;
-    const appVersion = Services.appinfo.version;
-
-    for (let { id } of excludeApplications) {
-        if (id && id.toLowerCase() === appName.toLowerCase()) return false;
-    }
-
-    const namedTargets = targetApplications.filter(t => t.id != null);
-    let versionTarget;
-    if (namedTargets.length > 0) {
-        versionTarget = namedTargets.find(t => t.id.toLowerCase() === appName.toLowerCase());
-        if (!versionTarget) return false;
-    } else {
-        versionTarget = targetApplications[0] ?? null;
-    }
-
-    if (versionTarget) {
-        const vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
-        if (versionTarget.minVersion && vc.compare(appVersion, versionTarget.minVersion) < 0) return false;
-        if (versionTarget.maxVersion && versionTarget.maxVersion !== "*" &&
-            vc.compare(appVersion, versionTarget.maxVersion) > 0) return false;
-    }
-
-    return true;
-}
-
-function removeDir(dir) {
-    let children = [];
-    let enumerator = dir.directoryEntries;
-    while (enumerator.hasMoreElements()) {
-        children.push(enumerator.nextFile);
-    }
-
-    for (let child of children) {
-        if (child.isDirectory()) {
-            removeDir(child);
-        } else {
-            try {
-                child.permissions = 0o666;
-            }
-            catch (ex) {}
-            child.remove(false);
-        }
-    }
-
-    try {
-        dir.permissions = 0o777;
-    }
-    catch (ex) {}
-    dir.remove(false);
-}
-
 export class ThemeInfo {
     #dir;
 
     constructor(themeDir, rdfContent) {
         this.#dir = themeDir;
 
-        this.id           = parseRDFField(rdfContent, "id");
-        this.version      = parseRDFField(rdfContent, "version");
-        this.internalName = parseRDFField(rdfContent, "internalName");
-        this.name         = parseRDFField(rdfContent, "name");
-        this.description  = parseRDFField(rdfContent, "description");
-        this.creator      = parseRDFField(rdfContent, "creator");
-        this.homepageURL  = parseRDFField(rdfContent, "homepageURL");
-        this.targetApplications  = parseTargetApplications(rdfContent);
-        this.excludeApplications = parseExcludeApplications(rdfContent);
+        this.id           = ThemeInfo._parseRDFField(rdfContent, "id");
+        this.version      = ThemeInfo._parseRDFField(rdfContent, "version");
+        this.internalName = ThemeInfo._parseRDFField(rdfContent, "internalName");
+        this.name         = ThemeInfo._parseRDFField(rdfContent, "name");
+        this.description  = ThemeInfo._parseRDFField(rdfContent, "description");
+        this.creator      = ThemeInfo._parseRDFField(rdfContent, "creator");
+        this.homepageURL  = ThemeInfo._parseRDFField(rdfContent, "homepageURL");
+        this.targetApplications  = ThemeInfo._parseTargetApplications(rdfContent);
+        this.excludeApplications = ThemeInfo._parseExcludeApplications(rdfContent);
         this.minVersion = this.targetApplications[0]?.minVersion ?? null;
         this.maxVersion = this.targetApplications[0]?.maxVersion ?? null;
 
@@ -166,7 +72,101 @@ export class ThemeInfo {
     }
 
     get compatible() {
-        return checkCompatible(this.targetApplications, this.excludeApplications);
+        return ThemeInfo._checkCompatible(this.targetApplications, this.excludeApplications);
+    }
+
+    static _readFileText(nsIFile) {
+        let fis = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
+        fis.init(nsIFile, 0x01, 0, 0);
+        let cis = Cc["@mozilla.org/intl/converter-input-stream;1"].createInstance(Ci.nsIConverterInputStream);
+        cis.init(fis, "UTF-8", 8192, Ci.nsIConverterInputStream.DEFAULT_REPLACEMENT_CHARACTER);
+        let content = "";
+        let chunk = {};
+        while (cis.readString(8192, chunk) > 0) content += chunk.value;
+        cis.close();
+        fis.close();
+        return content;
+    }
+
+    static _parseRDFField(content, field) {
+        return content.match(new RegExp(`<em:${field}>(.*?)<\/em:${field}>`))?.[1]?.trim() ?? null;
+    }
+
+    static _parseAppBlocks(content, tagName) {
+        const blocks = [];
+        const re = new RegExp(`<em:${tagName}>[\\s\\S]*?<\\/em:${tagName}>`, "g");
+        let match;
+        while ((match = re.exec(content)) !== null) {
+            blocks.push(match[0]);
+        }
+        return blocks;
+    }
+
+    static _parseTargetApplications(content) {
+        return this._parseAppBlocks(content, "targetApplication").map(block => ({
+            id:         this._parseRDFField(block, "id"),
+            minVersion: this._parseRDFField(block, "minVersion"),
+            maxVersion: this._parseRDFField(block, "maxVersion"),
+        }));
+    }
+
+    static _parseExcludeApplications(content) {
+        return this._parseAppBlocks(content, "excludeApplication").map(block => ({
+            id: this._parseRDFField(block, "id"),
+        }));
+    }
+
+    static _checkCompatible(targetApplications, excludeApplications) {
+        const appName    = Services.appinfo.name;
+        const appVersion = Services.appinfo.version;
+
+        for (let { id } of excludeApplications) {
+            if (id && id.toLowerCase() === appName.toLowerCase()) return false;
+        }
+
+        const namedTargets = targetApplications.filter(t => t.id != null);
+        let versionTarget;
+        if (namedTargets.length > 0) {
+            versionTarget = namedTargets.find(t => t.id.toLowerCase() === appName.toLowerCase());
+            if (!versionTarget) return false;
+        } else {
+            versionTarget = targetApplications[0] ?? null;
+        }
+
+        if (versionTarget) {
+            const vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
+            if (versionTarget.minVersion && vc.compare(appVersion, versionTarget.minVersion) < 0) return false;
+            if (versionTarget.maxVersion && versionTarget.maxVersion !== "*" &&
+                vc.compare(appVersion, versionTarget.maxVersion) > 0) return false;
+        }
+
+        return true;
+    }
+
+    static _removeDir(dir) {
+        let children = [];
+        let enumerator = dir.directoryEntries;
+        while (enumerator.hasMoreElements()) {
+            children.push(enumerator.nextFile);
+        }
+
+        for (let child of children) {
+            if (child.isDirectory()) {
+                this._removeDir(child);
+            } else {
+                try {
+                    child.permissions = 0o666;
+                }
+                catch (ex) {}
+                child.remove(false);
+            }
+        }
+
+        try {
+            dir.permissions = 0o777;
+        }
+        catch (ex) {}
+        dir.remove(false);
     }
 
     static defaultTheme = Object.freeze({
@@ -184,12 +184,12 @@ export class ThemeInfo {
         excludeApplications: [],
         minVersion:          null,
         maxVersion:          null,
-        get isActive()         { let p = Services.prefs.getStringPref(ACTIVE_THEME_PREF, ""); return p === "default" || p === ""; },
+        get isActive()           { let p = Services.prefs.getStringPref(ACTIVE_THEME_PREF, ""); return p === "default" || p === ""; },
         get isPendingUninstall() { return false; },
-        get compatible()     { return true; },
-        activate()             { Services.prefs.setStringPref(ACTIVE_THEME_PREF, "default"); },
-        markForUninstall()     {},
-        cancelUninstall()      {},
+        get compatible()         { return true; },
+        activate()               { Services.prefs.setStringPref(ACTIVE_THEME_PREF, "default"); },
+        markForUninstall()       {},
+        cancelUninstall()        {},
     });
 
     static getAll() {
@@ -208,8 +208,8 @@ export class ThemeInfo {
             if (!rdf.exists()) continue;
 
             try {
-                let content = readFileText(rdf);
-                if (!parseRDFField(content, "internalName")) continue;
+                let content = this._readFileText(rdf);
+                if (!this._parseRDFField(content, "internalName")) continue;
                 results.push(new ThemeInfo(entry, content));
             } catch (ex) {
                 console.error(`userchrome-manager: failed to read install.rdf in ${entry.leafName}`, ex);
@@ -219,12 +219,12 @@ export class ThemeInfo {
     }
 
     static getByInternalName(internalName) {
-        return ThemeInfo.getAll().find(t => t.internalName === internalName) ?? null;
+        return this.getAll().find(t => t.internalName === internalName) ?? null;
     }
 
     static getActive() {
         let pref = Services.prefs.getStringPref(ACTIVE_THEME_PREF, "") || "default";
-        return ThemeInfo.getByInternalName(pref) ?? ThemeInfo.defaultTheme;
+        return this.getByInternalName(pref) ?? this.defaultTheme;
     }
 
     static installFromZip(zipFile, { overwrite = false } = {}) {
@@ -254,7 +254,7 @@ export class ThemeInfo {
             cis.close();
             stream.close();
 
-            let internalName = parseRDFField(rdfContent, "internalName");
+            let internalName = this._parseRDFField(rdfContent, "internalName");
             if (!internalName) {
                 throw { code: "NO_INTERNAL_NAME" };
             }
@@ -265,19 +265,19 @@ export class ThemeInfo {
             }
 
             // Check compatibility before touching the file system
-            const _targetApps = parseTargetApplications(rdfContent);
-            const _excludeApps = parseExcludeApplications(rdfContent);
-            if (!checkCompatible(_targetApps, _excludeApps)) {
+            const targetApps  = this._parseTargetApplications(rdfContent);
+            const excludeApps = this._parseExcludeApplications(rdfContent);
+            if (!this._checkCompatible(targetApps, excludeApps)) {
                 throw {
-                    code: "NOT_COMPATIBLE",
-                    themeName: parseRDFField(rdfContent, "name") || internalName,
-                    themeVersion: parseRDFField(rdfContent, "version"),
-                    minVersion: _targetApps[0]?.minVersion ?? null,
-                    maxVersion: _targetApps[0]?.maxVersion ?? null,
+                    code:         "NOT_COMPATIBLE",
+                    themeName:    this._parseRDFField(rdfContent, "name") || internalName,
+                    themeVersion: this._parseRDFField(rdfContent, "version"),
+                    minVersion:   targetApps[0]?.minVersion ?? null,
+                    maxVersion:   targetApps[0]?.maxVersion ?? null,
                 };
             }
 
-            if (!overwrite && ThemeInfo.getByInternalName(internalName) !== null) {
+            if (!overwrite && this.getByInternalName(internalName) !== null) {
                 throw { code: "ALREADY_EXISTS", internalName };
             }
 
@@ -291,7 +291,7 @@ export class ThemeInfo {
             targetDir.append(internalName);
 
             if (targetDir.exists()) {
-                removeDir(targetDir);
+                this._removeDir(targetDir);
             }
             targetDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
 
@@ -322,7 +322,7 @@ export class ThemeInfo {
                 }
             } catch (ex) {
                 if (targetDir.exists()) {
-                    removeDir(targetDir);
+                    this._removeDir(targetDir);
                 }
                 throw ex;
             }
@@ -339,10 +339,10 @@ export class ThemeInfo {
 
         let failed = [];
         for (let internalName of pending) {
-            let theme = ThemeInfo.getByInternalName(internalName);
-            if (!theme) continue; // already gone
+            let theme = this.getByInternalName(internalName);
+            if (!theme) continue;
             try {
-                removeDir(theme.dir);
+                this._removeDir(theme.dir);
             } catch (ex) {
                 console.error(`userchrome-manager: failed to remove theme folder for ${internalName}`, ex);
                 failed.push(internalName);
@@ -357,7 +357,7 @@ export class ThemeInfo {
     }
 
     static getThemeInstall(aValue) {
-        let theme = ThemeInfo.getActive();
+        let theme = this.getActive();
         if (!theme?.dir)
             return;
         let rdf = theme.dir.clone();
@@ -366,6 +366,6 @@ export class ThemeInfo {
         if (!rdf.exists())
             return;
 
-        return parseRDFField(readFileText(rdf), aValue);
+        return this._parseRDFField(this._readFileText(rdf), aValue);
     }
 }
