@@ -12,12 +12,109 @@ try
     let ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
     let prefs = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefBranch);
     let internalName = prefs.getStringPref("general.skins.selectedSkin", "");
+    let disabledExtensions = JSON.parse(prefs.getStringPref("userChrome.extensions.disabled", "[]"));
+    let pendingUninstallExtensions = JSON.parse(prefs.getStringPref("userChrome.extensions.pendingUninstall", "[]"));
+    // ...don't use any extensions that are pending for uninstall.
+    disabledExtensions = [...new Set([...disabledExtensions, ...pendingUninstallExtensions])];
 
     let utilsManifest = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties).get("UChrm", Ci.nsIFile);
     utilsManifest.append("utils");
     utilsManifest.append("chrome.manifest");
     if (utilsManifest.exists()) {
         Cm.QueryInterface(Ci.nsIComponentRegistrar).autoRegister(utilsManifest);
+    }
+
+    let extensionsDir = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties).get("UChrm", Ci.nsIFile);
+    extensionsDir.append("extensions");
+    if (extensionsDir.exists() && extensionsDir.isDirectory())
+    {
+        let entries = extensionsDir.directoryEntries;
+        while (entries.hasMoreElements(0))
+        {
+            let entry = entries.nextFile;
+            if (!entry.isDirectory())
+                continue;
+
+            let rdf = entry.clone();
+            rdf.append("install.rdf");
+
+            if (!rdf.exists())
+                continue;
+
+            let fis = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(Ci.nsIFileInputStream);
+            fis.init(rdf, 0x01, 0, 0);
+
+            let cis = Cc["@mozilla.org/intl/converter-input-stream;1"].createInstance(Ci.nsIConverterInputStream);
+            cis.init(fis, "UTF-8", 8192, Ci.nsIConverterInputStream.DEFAULT_REPLACEMENT_CHARACTER);
+
+            let content = "";
+            let chunk = {};
+
+            while (cis.readString(8192, chunk) > 0) content += chunk.value;
+            cis.close();
+            fis.close();
+
+            let match = content.match(/<em:internalName>(.*?)<\/em:internalName>/);
+            if (match && !disabledExtensions.includes(match[1]))
+            {
+                // Compatibility check
+                let isCompatible = true;
+                let appInfo = Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULAppInfo);
+                let appName = appInfo.name;
+                let appVersion = appInfo.version;
+
+                for (let [block] of content.matchAll(/<em:excludeApplication>[\s\S]*?<\/em:excludeApplication>/g)) {
+                    let excId = block.match(/<em:id>(.*?)<\/em:id>/)?.[1]?.trim();
+                    if (excId && excId.toLowerCase() === appName.toLowerCase()) {
+                        isCompatible = false;
+                        break;
+                    }
+                }
+
+                if (isCompatible) {
+                    let allTargets = [...content.matchAll(/<em:targetApplication>[\s\S]*?<\/em:targetApplication>/g)]
+                        .map(([block]) => ({
+                            id:         block.match(/<em:id>(.*?)<\/em:id>/)?.[1]?.trim() ?? null,
+                            minVersion: block.match(/<em:minVersion>(.*?)<\/em:minVersion>/)?.[1]?.trim() ?? null,
+                            maxVersion: block.match(/<em:maxVersion>(.*?)<\/em:maxVersion>/)?.[1]?.trim() ?? null,
+                        }));
+                    let namedTargets = allTargets.filter(t => t.id != null);
+                    let versionTarget;
+
+                    if (namedTargets.length > 0) {
+                        versionTarget = namedTargets.find(t => t.id.toLowerCase() === appName.toLowerCase());
+                        if (!versionTarget) isCompatible = false;
+                    } else {
+                        versionTarget = allTargets[0] ?? null;
+                    }
+
+                    if (isCompatible && versionTarget) {
+                        let vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
+                        if (versionTarget.minVersion && vc.compare(appVersion, versionTarget.minVersion) < 0) isCompatible = false;
+                        if (isCompatible && versionTarget.maxVersion && versionTarget.maxVersion !== "*" &&
+                            vc.compare(appVersion, versionTarget.maxVersion) > 0) isCompatible = false;
+                    }
+                }
+
+                if (!isCompatible) {
+                    dump(`userchrome-manager: active theme "${internalName}" is not compatible with ${appName} ${appVersion}, skipping\n`);
+                    break;
+                }
+
+                foundManifest = entry.clone();
+                foundManifest.append("chrome.manifest");
+
+                if (foundManifest && foundManifest.exists()) {
+                    Cm.QueryInterface(Ci.nsIComponentRegistrar).autoRegister(foundManifest);
+
+                    let initJS = content.match(/<em:initJS>(.*?)<\/em:initJS>/)?.[1]?.trim() ?? null;
+                    if (initJS)
+                    {
+                        ChromeUtils.importESModule(initJS);
+                    }
+                }
+            }
+        }
     }
 
     if (internalName != "" && internalName != "default") {
@@ -139,7 +236,10 @@ try
     }
 
     ChromeUtils.importESModule("chrome://userchromejs/content/boot.sys.mjs");
-} catch(ex) {};
+} catch(ex) {
+    let prefs = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefBranch);
+    prefs.setStringPref("userChrome.error", ex.toString());
+};
 
 // Enable CSS
 defaultPref("toolkit.legacyUserProfileCustomizations.stylesheets", true);

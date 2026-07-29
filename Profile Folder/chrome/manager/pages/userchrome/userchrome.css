@@ -1,4 +1,5 @@
-#themesBox {
+#themesBox,
+#extensionsBox {
     margin: 10px 10px 0px 10px;
 }
 
@@ -11,7 +12,11 @@ richlistitem {
     border-bottom: 1px dotted #C0C0C0;
 }
 
-richlistitem[isDisabled="true"] {
+richlistitem[initiallyDisabled="1"] .addonIcon {
+    opacity: 0.3;
+}
+
+richlistitem[initiallyDisabled="1"] {
     color: GrayText;
 }
 
@@ -36,7 +41,7 @@ richlistbox:where(:focus) > richlistitem[selected="true"] {
     color: HighlightText;
 }
 
-richlistbox:where(:focus) > richlistitem[selected="true"][isDisabled="true"] {
+richlistbox:where(:focus) > richlistitem[selected="true"][initiallyDisabled="1"] {
     background-image: url("chrome://uchrm/content/pages/userchrome/images/itemDisabledFader.png");
 }
 
@@ -59,6 +64,10 @@ richlistitem[selected="true"] .startMsgLink {
     height: 32px;
     max-height: 32px;
     list-style-image: url("chrome://uchrm/content/pages/userchrome/images/themeGeneric.png");
+}
+
+#extensionsBox .addonIcon {
+    list-style-image: url("chrome://uchrm/content/pages/userchrome/images/extensionGeneric.png");
 }
 
 #themeSplitter {
@@ -91,8 +100,13 @@ richlistitem[selected="true"] .startMsgLink {
     overflow: auto;
 }
 
+#extensionsView,
 #themesView {
     margin: 0;
+}
+
+#themesView {
+    min-width: calc(50% - 3px);
 }
 
 .previewText {
@@ -111,14 +125,26 @@ richlistitem[selected="true"] .startMsgLink {
 }
 
 richlistitem[opType="needs-uninstall"] .uninstallHide {
-    display: none;
+    display: none !important;
 }
 
 richlistitem[opType="needs-uninstall"] .uninstallShow {
     display: flex;
 }
 
-richlistitem[opType="needs-enable"] .enableShow {
+richlistitem[opType="needs-enable"] .enableShow,
+richlistitem[opType="needs-enable"] .enablePendingShow,
+richlistitem[opType="needs-disable"] .disablePendingShow {
+    display: flex;
+}
+
+richlistitem[isDisabled="1"] .disableHide,
+richlistitem[isDisabled="0"] .enableHide  {
+    display: none;
+}
+
+richlistitem[isDisabled="1"] .disableShow,
+richlistitem[isDisabled="0"] .enableShow  {
     display: flex;
 }
 
@@ -135,4 +161,59 @@ richlistitem[opType="needs-enable"] .enableShow {
 #commandBarBottom button {
     margin: 0;
     margin-inline-end: 5px;
+}
+
+#topBar {
+    border-bottom: 2px groove ThreeDFace;
+    background-color: -moz-Field;
+    color: -moz-FieldText;
+}
+
+#viewGroup {
+    padding-inline-start: 10px;
+    flex-direction: row;
+}
+
+#viewGroup > radio {
+    appearance: none;
+    margin: 0px 1px 0px 1px;
+    padding: 2px 6px;
+    min-width: 4.5em;
+}
+
+#viewGroup > radio:hover {
+    background-color: #E0E8F6;
+    color: black;
+}
+
+#viewGroup > radio[selected="true"] {
+    background-color: #C1D2EE;
+    color: black;
+}
+
+#viewGroup > radio .radio-check {
+    display: none;
+}
+
+#viewGroup > radio .radio-label-box {
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+}
+
+#viewGroup > radio .radio-icon {
+    opacity: 0.8;
+}
+
+#viewGroup > radio:hover .radio-icon,
+#viewGroup > radio[selected="true"] .radio-icon {
+    opacity: 1;
+}
+
+radio#extensions-view {
+    list-style-image: url("chrome://uchrm/content/pages/userchrome/images/extensionsView.png");
+}
+
+radio#themes-view {
+    list-style-image: url("chrome://uchrm/content/pages/userchrome/images/themesView.png");
 }

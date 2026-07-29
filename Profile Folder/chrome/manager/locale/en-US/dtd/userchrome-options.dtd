@@ -1,13 +1,22 @@
 <!ENTITY window.title "userChrome Options">
 
 <!ENTITY window.width "520">
-<!ENTITY window.height "280">
+<!ENTITY window.height "380">
 
 <!ENTITY cmd.useTheme.label "Use Theme">
 <!ENTITY cmd.useTheme.accesskey "T">
 
+<!ENTITY cmd.options.label "Options">
+<!ENTITY cmd.options.accesskey "O">
+
 <!ENTITY cmd.uninstall.label "Uninstall">
 <!ENTITY cmd.uninstall2.accesskey "U">
+
+<!ENTITY cmd.enable.label "Enable">
+<!ENTITY cmd.enable.accesskey "E">
+
+<!ENTITY cmd.disable.label "Disable">
+<!ENTITY cmd.disable.accesskey "D">
 
 <!ENTITY cmd.cancelUninstall.label "Cancel Uninstall">
 <!ENTITY cmd.cancelUninstall.accesskey "C">
@@ -21,9 +30,12 @@
 <!ENTITY cmd.about2.label "About this Add-on">
 <!ENTITY cmd.about.accesskey "A">
 
-<!ENTITY cmd.installFileTheme.label "Install Theme...">
+<!ENTITY cmd.installFileTheme.label "Install Add-on">
 <!ENTITY cmd.installFileTheme.accesskey "I">
-<!ENTITY cmd.installFileTheme.tooltip "Install a Theme">
+<!ENTITY cmd.installFileTheme.tooltip "Install an Add-on">
+
+<!ENTITY extensions.label "Extensions">
+<!ENTITY themes.label "Themes">
 
 <!ENTITY previewNoThemeSelected.label "No Theme Selected">
 <!ENTITY previewNoPreviewImage.label "This Theme does not have a Preview Image">

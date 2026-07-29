@@ -1,6 +1,8 @@
 import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
+import { ExtensionInfo } from "./ExtensionInfo.sys.mjs";
 
 const THEMES_RELATIVE_PATH = "themes";
+const EXTENSIONS_RELATIVE_PATH = "extensions";
 const ACTIVE_THEME_PREF = "general.skins.selectedSkin";
 const PENDING_UNINSTALL_PREF = "general.skins.pendingUninstall";
 
@@ -17,6 +19,7 @@ export class ThemeInfo {
         this.description  = ThemeInfo._parseRDFField(rdfContent, "description");
         this.creator      = ThemeInfo._parseRDFField(rdfContent, "creator");
         this.homepageURL  = ThemeInfo._parseRDFField(rdfContent, "homepageURL");
+        this.isExtension  = false;
         this.targetApplications  = ThemeInfo._parseTargetApplications(rdfContent);
         this.excludeApplications = ThemeInfo._parseExcludeApplications(rdfContent);
         this.minVersion = this.targetApplications[0]?.minVersion ?? null;
@@ -227,6 +230,7 @@ export class ThemeInfo {
         return this.getByInternalName(pref) ?? this.defaultTheme;
     }
 
+    // This installs extensions too.
     static installFromZip(zipFile, { overwrite = false } = {}) {
         let zr = Cc["@mozilla.org/libjar/zip-reader;1"].createInstance(Ci.nsIZipReader);
 
@@ -253,6 +257,9 @@ export class ThemeInfo {
 
             cis.close();
             stream.close();
+
+            let type = this._parseRDFField(rdfContent, "type");
+            let isExtension = (type.toLowerCase() == "extension");
 
             let internalName = this._parseRDFField(rdfContent, "internalName");
             if (!internalName) {
@@ -281,13 +288,13 @@ export class ThemeInfo {
                 throw { code: "ALREADY_EXISTS", internalName };
             }
 
-            let themesDir = Services.dirsvc.get("UChrm", Ci.nsIFile);
-            themesDir.append(THEMES_RELATIVE_PATH);
-            if (!themesDir.exists()) {
-                themesDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
+            let addonDir = Services.dirsvc.get("UChrm", Ci.nsIFile);
+            addonDir.append(isExtension ? EXTENSIONS_RELATIVE_PATH : THEMES_RELATIVE_PATH);
+            if (!addonDir.exists()) {
+                addonDir.create(Ci.nsIFile.DIRECTORY_TYPE, 0o755);
             }
 
-            let targetDir = themesDir.clone();
+            let targetDir = addonDir.clone();
             targetDir.append(internalName);
 
             if (targetDir.exists()) {
@@ -327,7 +334,7 @@ export class ThemeInfo {
                 throw ex;
             }
 
-            return new ThemeInfo(targetDir, rdfContent);
+            return isExtension ? new ExtensionInfo(targetDir, rdfContent) : new ThemeInfo(targetDir, rdfContent);
         } finally {
             zr.close();
         }
@@ -354,18 +361,5 @@ export class ThemeInfo {
         } else {
             Services.prefs.clearUserPref(PENDING_UNINSTALL_PREF);
         }
-    }
-
-    static getThemeInstall(aValue) {
-        let theme = this.getActive();
-        if (!theme?.dir)
-            return;
-        let rdf = theme.dir.clone();
-        rdf.append("install.rdf");
-
-        if (!rdf.exists())
-            return;
-
-        return this._parseRDFField(this._readFileText(rdf), aValue);
     }
 }

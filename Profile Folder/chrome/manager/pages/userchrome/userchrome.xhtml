@@ -9,16 +9,20 @@
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul" 
         id="userchromeOptions"
         windowtype="Browser:UserChromeOptions"
+        screenX="10" screenY="10"
         width="&window.width;" height="&window.height;" role="dialog" resizable="true"
 		persist="width height screenX screenY sizemode"
         title="&window.title;">
 
-    <commandset id="themesCommands">
+    <commandset id="addonsCommands">
         <command id="cmd_about"/>
         <command id="cmd_homepage"/>
+        <command id="cmd_options"/>
         <command id="cmd_uninstall"/>
         <command id="cmd_cancelUninstall"/>
         <command id="cmd_useTheme"/>
+        <command id="cmd_enable"/>
+        <command id="cmd_disable"/>
     </commandset>
 
     <commandset id="globalCommands">
@@ -30,6 +34,8 @@
     <menupopup id="addonContextMenu">
         <menuitem id="menuitem_useTheme" default="true" command="cmd_useTheme"
             label="&cmd.useTheme.label;" accesskey="&cmd.useTheme.accesskey;"/>
+        <menuitem id="menuitem_options" default="true" command="cmd_options"
+            label="&cmd.options.label;" accesskey="&cmd.options.accesskey;"/>
         <menuitem id="menuitem_homepage" command="cmd_homepage"
               label="&cmd.homepage.label;" accesskey="&cmd.homepage.accesskey;"/>
         <menuitem id="menuitem_about" command="cmd_about"
@@ -39,9 +45,26 @@
                 label="&cmd.uninstall.label;" accesskey="&cmd.uninstall2.accesskey;"/>
         <menuitem id="menuitem_cancelUninstall" command="cmd_cancelUninstall"
                 label="&cmd.cancelUninstall.label;" accesskey="&cmd.cancelUninstall.accesskey;"/>
+        <menuitem id="menuitem_enable" command="cmd_enable"
+                label="&cmd.enable.label;" accesskey="&cmd.enable.accesskey;"/>
+        <menuitem id="menuitem_disable" command="cmd_disable"
+                label="&cmd.disable.label;" accesskey="&cmd.disable.accesskey;"/>
     </menupopup>
 
     <stringbundle id="optionsBundle" src="chrome://uchrm/locale/properties/userchrome-options.properties"/>
+
+    <box id="topBar">
+        <radiogroup id="viewGroup" persist="last-selected">
+            <radio id="extensions-view" label="&extensions.label;" oncommand="showView('extensions');"/>
+            <radio id="themes-view" label="&themes.label;" oncommand="showView('themes');"/>
+        </radiogroup>
+    </box>
+
+    <hbox id="extensionsBox" flex="1">
+        <richlistbox id="extensionsView" context="addonContextMenu" flex="1">
+        
+        </richlistbox>
+    </hbox>
 
     <hbox id="themesBox" flex="1">
         <richlistbox id="themesView" context="addonContextMenu" flex="1">

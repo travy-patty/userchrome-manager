@@ -9,6 +9,8 @@
 
 {
     let { ThemeInfo } = ChromeUtils.importESModule("chrome://uchrmjs/content/modules/ThemeInfo.sys.mjs");
+    let { ExtensionInfo } = ChromeUtils.importESModule("chrome://uchrmjs/content/modules/ExtensionInfo.sys.mjs");
 
     ThemeInfo.processPendingUninstalls();
+    ExtensionInfo.processPendingUninstalls();
 }
