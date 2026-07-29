@@ -1,7 +1,9 @@
 # userChrome Manager
-userChrome Manager is a easy to use theme manager for multiple userChrome themes for  Firefox **(115 - latest)**.
+userChrome Manager is a easy to use extension/theme manager for multiple userChrome themes and extensions for  Firefox **(115 - latest)**.
 
-![userChrome Manager](images/screenshot.png)
+![userChrome Manager: Extensions](images/screenshot_extensions.png)
+
+![userChrome Manager: Themes](images/screenshot.png)
 
 ## Compatibility
 userChrome Manager has been tested with the following platforms:
@@ -30,7 +32,7 @@ To use a userChrome theme such as [Namoroka](https://github.com/echelon-theme/na
 
 1. Download the theme's release `.zip` file.
 2. On Firefox, open userChrome Options by going to **View** > **Apply Theme** > **Manage Themes** in the Menu Bar, or go to `about:userchrome` page.
-3. Press the `Install Theme...` button on the bottom left of the page.
+3. Press the `Install Add-On` button on the bottom left of the page.
 4. Select the `.zip` file in the file picker.
 5. Press the `Restart Firefox` link on the selected theme when prompted.
 6. You are now using your theme - enjoy!

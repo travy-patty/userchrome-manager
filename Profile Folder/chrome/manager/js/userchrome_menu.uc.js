@@ -139,7 +139,11 @@
 
     function launchUserChromeOptions(event)
     {
-        openTrustedLinkIn("about:userchrome", "tab");
+        window.openDialog(
+            "about:userchrome",
+            stringbundle.GetStringFromName("dialog_title"),
+            "chrome,dependent,dialog=no,resizable"
+        ); 
     }
 
 
