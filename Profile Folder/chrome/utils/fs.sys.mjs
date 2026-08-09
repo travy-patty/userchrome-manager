@@ -25,6 +25,7 @@ export class FileSystem{
   }
   // Call to .parent is needed because chrome urls get implicit "filename" based on the provider
   static #SCRIPT_URI;
+  static #STYLE_URI;
   static #RESOURCE_URI;
   static{
     this.#RESOURCE_URI = FileSystem.getFileURIForFile(
@@ -37,15 +38,24 @@ export class FileSystem{
       .QueryInterface(Ci.nsIFileURL).file.parent,
       FileSystem.RESULT_DIRECTORY
     );
+    this.#STYLE_URI = FileSystem.getFileURIForFile(
+      FileSystem.convertChromeURIToFileURI('chrome://userstyles/skin/')
+      .QueryInterface(Ci.nsIFileURL).file.parent,
+      FileSystem.RESULT_DIRECTORY
+    );
   }
-
+  
   static get SCRIPT_URI(){
     return Services.io.newURI(FileSystem.#SCRIPT_URI)
   }
-
+  
+  static get STYLE_URI(){
+    return Services.io.newURI(FileSystem.#STYLE_URI)
+  }
+  
   static get RESOURCE_URI(){
     return Services.io.newURI(FileSystem.#RESOURCE_URI)
-  } 
+  }
   
   static getResourceDir(){
     return FileSystemResult.fromNsIFile(FileSystem.RESOURCE_URI.QueryInterface(Ci.nsIFileURL).file)
@@ -54,13 +64,17 @@ export class FileSystem{
   static getScriptDir(){
     return FileSystemResult.fromNsIFile(FileSystem.SCRIPT_URI.QueryInterface(Ci.nsIFileURL).file)
   }
-
+  
+  static getStyleDir(){
+    return FileSystemResult.fromNsIFile(FileSystem.STYLE_URI.QueryInterface(Ci.nsIFileURL).file)
+  }
+  
   static #getEntryFromString(aFilename, baseFileURI){
     let baseDirectory = baseFileURI.QueryInterface(Ci.nsIFileURL).file;
     if(typeof aFilename !== "string"){
       return FileSystemResult.fromErrorKind(FileSystem.ERROR_KIND_INVALID_ARGUMENT,{expected:"String"});
     }
-    const parts = aFilename.replace("\\","/").split("/").filter(a => a.length > 0);
+    const parts = aFilename.replaceAll("\\","/").split("/").filter(a => a.length > 0);
     while(parts[0] === ".."){
       baseDirectory = baseDirectory.parent;
       parts.shift();
