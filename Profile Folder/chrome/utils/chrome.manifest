@@ -1,9 +1,7 @@
 content userchrome      ./
-content userchromejs    ./
-
-# Hack: Fake folders, will get overridden by themes
+# Hack: Fake folder, will get overridden
 content userscripts     ./userscripts/
-skin    userstyles      classic/1.0    ./userstyles/
+content userchromejs    ./
 
 content uchrm           ../manager/
 content uchrmjs         ../manager/JS/
