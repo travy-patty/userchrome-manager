@@ -71,6 +71,7 @@ function fsPathToFileUri(path, isDir = false)
 class ScriptData {
   #preLoadedStyle;
   #chromeURI;
+  #regularURI;
   #filePath;
   #chromePackage;
   #isRunning = false;
@@ -155,9 +156,17 @@ class ScriptData {
   markScriptInjectionFailure(){
     this.#injectionFailed = true
   }
+  get regularURI(){
+    if(!this.#regularURI){
+      this.#regularURI = Services.io.newURI(this.#filePath)
+    }
+    return this.#regularURI
+  }
   get chromeURI(){
     if(!this.#chromeURI){
-      this.#chromeURI = Services.io.newURI(this.#filePath)
+      this.#chromeURI = this.type === "loader"
+          ? Services.io.newURI(`chrome://userchromejs/content/${this.filename}`)
+          : Services.io.newURI(`chrome://${this.#chromePackage}/content/${this.filename}`)
     }
     return this.#chromeURI
   }
@@ -207,7 +216,7 @@ class ScriptData {
   static injectClassicScriptIntoGlobal(aScript,aGlobal){
     try{
       Services.scriptloader.loadSubScriptWithOptions(
-        aScript.chromeURI.spec,
+        aScript.regularURI.spec,
         {
           target: aGlobal,
           ignoreCache: aScript.ignoreCache
@@ -421,7 +430,6 @@ class UserChrome_js{
         FileSystem.RESULT_DIRECTORY
       )).QueryInterface(Ci.nsIFileURL).file));
     }
-    console.log(scriptDirs);
     const windowActorDefinitions = new Map();
     for (const scriptDir of scriptDirs){
       if(scriptDir.isDirectory()){
