@@ -396,7 +396,7 @@ class ResultError extends Error{
   }
 }
 
-class FileSystemResult{
+export class FileSystemResult{
   #result;
   #type;
   #fileuri;

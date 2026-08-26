@@ -24,6 +24,7 @@ try
         Cm.QueryInterface(Ci.nsIComponentRegistrar).autoRegister(utilsManifest);
     }
 
+    let scriptDirs = [];
     let extensionsDir = Cc["@mozilla.org/file/directory_service;1"].getService(Ci.nsIProperties).get("UChrm", Ci.nsIFile);
     extensionsDir.append("extensions");
     if (extensionsDir.exists() && extensionsDir.isDirectory())
@@ -111,6 +112,12 @@ try
                     if (initJS)
                     {
                         ChromeUtils.importESModule(initJS);
+                    }
+
+                    let scriptRoot = content.match(/<em:scriptRoot>(.*?)<\/em:scriptRoot>/)?.[1]?.trim() ?? null;
+                    if (scriptRoot)
+                    {
+                        scriptDirs.push(scriptRoot);
                     }
                 }
             }
@@ -235,7 +242,8 @@ try
 
     }
 
-    ChromeUtils.importESModule("chrome://userchromejs/content/boot.sys.mjs");
+    let { init } = ChromeUtils.importESModule("chrome://userchromejs/content/boot.sys.mjs");
+    init(scriptDirs);
 } catch(ex) {
     let prefs = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefBranch);
     prefs.setStringPref("userChrome.error", ex.toString());

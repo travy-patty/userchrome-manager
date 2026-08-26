@@ -29,6 +29,7 @@
         <em:homepageURL>https://github.com/travy-patty/userchrome-manager</em:homepageURL>
         <em:optionsURL>chrome://exampleextension/content/options.xhtml</em:optionsURL>
         <em:initJS>chrome://exampleextension/content/init.js</em:initJS>
+        <em:scriptRoot>chrome://exampleextension/content/JS/</em:scriptRoot>
     </Description>
 
 </RDF>

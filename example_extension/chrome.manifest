@@ -1,5 +1,3 @@
 content     userchrome          ./
 
-content     userscripts         content/JS/
-
 content     exampleextension    content/             contentaccessible=yes

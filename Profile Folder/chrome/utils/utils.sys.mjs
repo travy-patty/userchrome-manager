@@ -1,5 +1,5 @@
-import { FileSystem } from "chrome://userchromejs/content/fs.sys.mjs";
-export { FileSystem };
+import { FileSystem, FileSystemResult } from "chrome://userchromejs/content/fs.sys.mjs";
+export { FileSystem, FileSystemResult };
 
 const lazy = {
   startupPromises: new Set()

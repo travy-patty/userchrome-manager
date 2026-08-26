@@ -4,7 +4,7 @@
 // @homepageURL https://github.com/MrOtherGuy/fx-autoconfig
 // ==/UserScript==
 import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
-import { loaderModuleLink, Pref, FileSystem, windowUtils, showNotification, startupFinished, restartApplication, escapeXUL, toggleScript, extractScriptHeader, extractStyleHeader } from "chrome://userchromejs/content/utils.sys.mjs";
+import { loaderModuleLink, Pref, FileSystem, FileSystemResult, windowUtils, showNotification, startupFinished, restartApplication, escapeXUL, toggleScript, extractScriptHeader, extractStyleHeader } from "chrome://userchromejs/content/utils.sys.mjs";
 
 console.warn( "Browser is executing custom scripts via autoconfig" );
 
@@ -51,14 +51,33 @@ const MODULE_LOADER = new (function(){
   return this
 })();
 
+function fsPathToFileUri(path, isDir = false)
+{
+    let out = "file://";
+    if (Services.appinfo.OS == "WINNT")
+    {
+        // file:// URIs have a leading slash that Windows file path doesn't
+        // have normally
+        out += "/";
+    }
+    // Add and de-Windowsify the path
+    out += path.replaceAll("\\", "/");
+    // Add leading slash if it isn't there
+    if (isDir && out.slice(-1) != "/")
+        out += "/";
+    return out;
+}
+
 class ScriptData {
   #preLoadedStyle;
   #chromeURI;
+  #filePath;
   #chromePackage;
   #isRunning = false;
   #injectionFailed = false;
-  constructor(leafName, headerText, noExec, scriptType, chromePackage = "userscripts"){
+  constructor(leafName, filePath, headerText, noExec, scriptType, chromePackage = "userscripts"){
     this.#chromePackage = chromePackage;
+    this.#filePath = fsPathToFileUri(filePath);
     const hasLongDescription = (/^\/\/\ @long-description/im).test(headerText);
     this.filename = leafName;
     this.name = headerText.match(/\/\/ @name\s+(.+)\s*$/im)?.[1];
@@ -138,9 +157,7 @@ class ScriptData {
   }
   get chromeURI(){
     if(!this.#chromeURI){
-      this.#chromeURI = this.type === "loader"
-          ? Services.io.newURI(`chrome://userchromejs/content/${this.filename}`)
-          : Services.io.newURI(`chrome://${this.#chromePackage}/content/${this.filename}`)
+      this.#chromeURI = Services.io.newURI(this.#filePath)
     }
     return this.#chromeURI
   }
@@ -242,28 +259,28 @@ class ScriptData {
     if(aFile.fileSize < 24){
       // Smaller files can't possibly have a valid header
       // This also means that we successfully generate a ScriptData for *folders* named "xx.uc.js"...
-      return new ScriptData(aFile.leafName,"",aFile.fileSize === 0,ScriptData.TYPE_SCRIPT)
+      return new ScriptData(aFile.leafName, aFile.path,"",aFile.fileSize === 0,ScriptData.TYPE_SCRIPT)
     }
     const result = FileSystem.readNSIFileSyncUncheckedWithOptions(aFile,{ metaOnly: true });
     const headerText = extractScriptHeader(result);
     // If there are less than 2 bytes after the header then we mark the script as non-executable. This means that if the file only has a header then we don't try to inject it to any windows, since it wouldn't do anything.
-    return new ScriptData(aFile.leafName, headerText, headerText.length > aFile.fileSize - 2,ScriptData.TYPE_SCRIPT);
+    return new ScriptData(aFile.leafName, aFile.path, headerText, headerText.length > aFile.fileSize - 2,ScriptData.TYPE_SCRIPT);
   }
   static fromScriptFileInPackage(aFile, chromePackage){
     if(aFile.fileSize < 24){
-      return new ScriptData(aFile.leafName, "", aFile.fileSize === 0, ScriptData.TYPE_SCRIPT, chromePackage)
+      return new ScriptData(aFile.leafName, aFile.path, "", aFile.fileSize === 0, ScriptData.TYPE_SCRIPT, chromePackage)
     }
     const result = FileSystem.readNSIFileSyncUncheckedWithOptions(aFile, { metaOnly: true });
     const headerText = extractScriptHeader(result);
-    return new ScriptData(aFile.leafName, headerText, headerText.length > aFile.fileSize - 2, ScriptData.TYPE_SCRIPT, chromePackage);
+    return new ScriptData(aFile.leafName, aFile.path, headerText, headerText.length > aFile.fileSize - 2, ScriptData.TYPE_SCRIPT, chromePackage);
   }
   static fromStyleFile(aFile){
     if(aFile.fileSize < 24){
       // Smaller files can't possibly have a valid header
-      return new ScriptData(aFile.leafName,"",true,ScriptData.TYPE_STYLE)
+      return new ScriptData(aFile.leafName, aFile.path,"",true,ScriptData.TYPE_STYLE)
     }
     const result = FileSystem.readNSIFileSyncUncheckedWithOptions(aFile,{ metaOnly: true });
-    return new ScriptData(aFile.leafName, extractStyleHeader(result), true,ScriptData.TYPE_STYLE);
+    return new ScriptData(aFile.leafName, aFile.path, extractStyleHeader(result), true,ScriptData.TYPE_STYLE);
   }
 }
 
@@ -328,9 +345,10 @@ function updateMenuStatus(event){
 }
 
 class UserChrome_js{
-  constructor(){
+  constructor(scriptDirs){
     this.scripts = [];
     this.styles = [];
+    this.scriptDirs = scriptDirs;
     this.SESSION_RESTORED = false;
     this.IS_ENABLED = Services.prefs.getBoolPref(PREF_ENABLED,false);
     this.EXPERIMENTS_ENABLED = Services.prefs.getBoolPref(PREF_EXPERIMENTAL,false);
@@ -395,25 +413,35 @@ class UserChrome_js{
     this.PERSISTENT_DOMCONTENT_CALLBACK = Services.prefs.getBoolPref("userChromeJS.persistent_domcontent_callback", true);
     const disabledScripts = getDisabledScripts();
     // load script data
-    const scriptDir = FileSystem.getScriptDir();
+    let scriptDirs = [FileSystem.getScriptDir()];
+    for (const dir of this.scriptDirs){
+      scriptDirs.push(FileSystemResult.fromNsIFile(Services.io.newURI(FileSystem.getFileURIForFile(
+        FileSystem.convertChromeURIToFileURI(dir)
+        .QueryInterface(Ci.nsIFileURL).file,
+        FileSystem.RESULT_DIRECTORY
+      )).QueryInterface(Ci.nsIFileURL).file));
+    }
+    console.log(scriptDirs);
     const windowActorDefinitions = new Map();
-    if(scriptDir.isDirectory()){
-      for(let entry of scriptDir){
-        if (/^[A-Za-z0-9]+.*(\.uc\.js|\.uc\.mjs|\.sys\.mjs)$/i.test(entry.leafName)) {
-          let script = ScriptData.fromScriptFile(entry);
-          if(this.registerScript(script,disabledScripts.includes(script.filename),windowActorDefinitions)){
-            continue // script is disabled
-          }
-          if(script.inbackground){
-            try{
-              if(script.isESM){
-                ChromeUtils.importESModule( script.chromeURI.spec );
-                ScriptData.markScriptRunning(script);
-              }else{
-                console.warn(`Refusing to import legacy jsm style backgroundmodule script: ${script.filename} - convert to ES6 modules instead`);
+    for (const scriptDir of scriptDirs){
+      if(scriptDir.isDirectory()){
+        for(let entry of scriptDir){
+          if (/^[A-Za-z0-9]+.*(\.uc\.js|\.uc\.mjs|\.sys\.mjs)$/i.test(entry.leafName)) {
+            let script = ScriptData.fromScriptFile(entry);
+            if(this.registerScript(script,disabledScripts.includes(script.filename),windowActorDefinitions)){
+              continue // script is disabled
+            }
+            if(script.inbackground){
+              try{
+                if(script.isESM){
+                  ChromeUtils.importESModule( script.chromeURI.spec );
+                  ScriptData.markScriptRunning(script);
+                }else{
+                  console.warn(`Refusing to import legacy jsm style backgroundmodule script: ${script.filename} - convert to ES6 modules instead`);
+                }
+              }catch(ex){
+                console.error(new Error(`@ ${script.filename}:${ex.lineNumber}`,{cause:ex}));
               }
-            }catch(ex){
-              console.error(new Error(`@ ${script.filename}:${ex.lineNumber}`,{cause:ex}));
             }
           }
         }
@@ -661,8 +689,10 @@ class UserChrome_js{
   
 }
 
-const _ucjs = !Services.appinfo.inSafeMode && new UserChrome_js();
-_ucjs && startupFinished().then(() => {
-  _ucjs.SESSION_RESTORED = true;
-  _ucjs.GBROWSERHACK_ENABLED === 2 && showgBrowserNotification();
-});
+export function init(scriptDirs) {
+  const _ucjs = !Services.appinfo.inSafeMode && new UserChrome_js(scriptDirs);
+  _ucjs && startupFinished().then(() => {
+    _ucjs.SESSION_RESTORED = true;
+    _ucjs.GBROWSERHACK_ENABLED === 2 && showgBrowserNotification();
+  });
+}
